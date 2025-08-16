@@ -4,35 +4,48 @@
     "slug": "Great-Awareness",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icons/tiny_main_logo.svg",
     "scheme": "greatawareness",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E42F45"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.GreatAwareness"
+      "package": "com.anonymous.GreatAwareness",
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResourcesInReleaseBuilds": true,
+      "shrinkResources": true,
+      "minifyEnabled": true
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "Great Awareness",
+      "shortName": "GA",
+      "description": "Conscious awareness and personal development app",
+      "themeColor": "#E42F45",
+      "backgroundColor": "#FFFFFF",
+      "startUrl": "/",
+      "display": "standalone",
+      "orientation": "portrait"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#E42F45"
         }
       ]
     ],
@@ -42,8 +55,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "7db4c041-fd38-488e-9dd1-c610d981f816"
+        "projectId": "80c2b00b-6a68-4c3b-9308-aaf789279f34"
       }
-    }
+    },
+    "owner": "customzashwa"
   }
 }

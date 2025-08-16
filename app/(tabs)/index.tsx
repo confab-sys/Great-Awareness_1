@@ -1,31 +1,36 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import MainLogo from '../../assets/icons/Main_logo.svg';
 import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 export default function HomeScreen() {
   const COLORS = ['#1C2922', '#E42F45', '#D3E4DE', '#893245'];
   const [colorIndex, setColorIndex] = useState(0);
   const router = useRouter();
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setColorIndex((prevIndex) => (prevIndex + 1) % COLORS.length);
-    }, 1000);
-
-    return () => clearInterval(intervalId);
+  const handleColorChange = useCallback(() => {
+    setColorIndex((prevIndex) => (prevIndex + 1) % COLORS.length);
   }, []);
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
+  const handleNavigation = useCallback(() => {
+    try {
       router.push('/hello_conscious_one');
-    }, 10000);
-    return () => clearTimeout(timeoutId);
+    } catch (error) {
+      console.warn('Navigation error:', error);
+    }
   }, [router]);
+
+  useEffect(() => {
+    const intervalId = setInterval(handleColorChange, 1000);
+    return () => clearInterval(intervalId);
+  }, [handleColorChange]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(handleNavigation, 10000);
+    return () => clearTimeout(timeoutId);
+  }, [handleNavigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: COLORS[colorIndex] }]}>
-      <MainLogo width={200} height={200} />
     </View>
   );
 }

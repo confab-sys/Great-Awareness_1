@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { SvgXml } from 'react-native-svg';
 import { useRouter } from 'expo-router';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 
 export default function HelloConsciousOne() {
   const router = useRouter();
@@ -15,7 +15,7 @@ export default function HelloConsciousOne() {
   
   const tokenIconSvg = `<svg width="45" height="45" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path opacity="0.4" d="M16.19 2.33002H7.82001C4.18001 2.33002 2.01001 4.50002 2.01001 8.14002V16.51C2.01001 20.15 4.18001 22.32 7.82001 22.32H16.19C19.83 22.32 22 20.15 22 16.51V8.15002C22 4.51002 19.83 2.33002 16.19 2.33002Z" fill="black"/><path d="M16.4 8.21002L12.64 6.18002C12.24 5.97002 11.77 5.97002 11.37 6.18002L7.60999 8.21002C7.33999 8.36002 7.17001 8.65002 7.17001 8.98002C7.17001 9.31002 7.33999 9.60002 7.60999 9.75002L11.37 11.78C11.57 11.89 11.79 11.94 12.01 11.94C12.23 11.94 12.45 11.89 12.65 11.78L16.41 9.75002C16.68 9.60002 16.85 9.31002 16.85 8.98002C16.84 8.65002 16.67 8.36002 16.4 8.21002Z" fill="black"/><path d="M10.74 12.47L7.23999 10.72C6.96999 10.59 6.65999 10.6 6.39999 10.76C6.13999 10.92 5.98999 11.19 5.98999 11.49V14.8C5.98999 15.37 6.31001 15.89 6.82001 16.14L10.32 17.89C10.44 17.95 10.57 17.98 10.71 17.98C10.87 17.98 11.02 17.94 11.16 17.85C11.42 17.69 11.57 17.42 11.57 17.12V13.81C11.57 13.24 11.26 12.73 10.74 12.47Z" fill="black"/><path d="M17.59 10.76C17.33 10.6 17.02 10.59 16.75 10.72L13.25 12.47C12.74 12.73 12.42 13.24 12.42 13.81V17.12C12.42 17.42 12.57 17.69 12.83 17.85C12.97 17.94 13.12 17.98 13.28 17.98C13.41 17.98 13.54 17.95 13.67 17.89L17.17 16.14C17.68 15.88 18 15.37 18 14.8V11.49C18 11.19 17.85 10.92 17.59 10.76Z" fill="black"/></svg>`;
 
-  const rectangleBaseSvg = `<svg width="360" height="60" viewBox="0 0 360 60" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 0H360V47C360 54.1797 354.18 60 347 60H13C5.8203 60 0 54.1797 0 47V0Z" fill="#1C2922"/></svg>`;
+
   
 
   
@@ -24,9 +24,7 @@ export default function HelloConsciousOne() {
       <View style={styles.container}>
         <Text style={styles.greatAwarenessTopLeft}>Great Awareness</Text>
         <View style={styles.textContainer}>
-          <Text style={styles.helloText}>Hello</Text>
-          <Text style={styles.consciousText}>Conscious</Text>
-          <Text style={styles.oneText}>One</Text>
+          <Text style={styles.helloText}>Hello Conscious One</Text>
         </View>
         <View style={styles.iconGrid}>
           <View style={styles.iconRow}>
@@ -37,43 +35,42 @@ export default function HelloConsciousOne() {
                 <Text style={styles.iconText}>Reach out Great Awareness</Text>
               </View>
             </View>
-            <View style={styles.iconContainer}>
-              <SvgXml xml={redSquareSvg} style={styles.redSquareIcon} />
-              <View style={styles.iconOverlay}>
-                <SvgXml xml={messageIconSvg} />
-                <Text style={styles.iconText}>join Our Community</Text>
-              </View>
-            </View>
+                         <TouchableOpacity 
+               style={styles.iconContainer}
+               onPress={() => Linking.openURL('https://chat.whatsapp.com/K2l97vmql8YDRIaIE9A4vq?mode=ac_t')}
+             >
+               <SvgXml xml={redSquareSvg} style={styles.redSquareIcon} />
+               <View style={styles.iconOverlay}>
+                 <SvgXml xml={messageIconSvg} />
+                 <Text style={styles.iconText}>join Our Community</Text>
+               </View>
+             </TouchableOpacity>
           </View>
           <View style={styles.iconRow}>
-            <View style={styles.iconContainer}>
-              <SvgXml xml={redSquareSvg} style={styles.redSquareIcon} />
-              <View style={styles.iconOverlay}>
-                <SvgXml xml={videoIconSvg} />
-                <Text style={styles.iconText}>News Letter & Video</Text>
-              </View>
-            </View>
-            <View style={styles.iconContainer}>
-              <SvgXml xml={redSquareSvg} style={styles.redSquareIcon} />
-              <View style={styles.iconOverlay}>
-                <SvgXml xml={tokenIconSvg} />
-                <Text style={[styles.iconText, {bottom: 30, fontSize: 12}]}>Recharge</Text>
-                <Text style={[styles.iconText, {bottom: 10, fontSize: 12}]}>tokens</Text>
-              </View>
-            </View>
+                         <TouchableOpacity 
+               style={styles.iconContainer}
+               onPress={() => router.push('/newsletter-videos')}
+             >
+               <SvgXml xml={redSquareSvg} style={styles.redSquareIcon} />
+               <View style={styles.iconOverlay}>
+                 <SvgXml xml={videoIconSvg} />
+                 <Text style={styles.iconText}>News Letter & Video</Text>
+               </View>
+             </TouchableOpacity>
+                         <TouchableOpacity 
+               style={styles.iconContainer}
+               onPress={() => router.push('/tokens')}
+             >
+               <SvgXml xml={redSquareSvg} style={styles.redSquareIcon} />
+               <View style={styles.iconOverlay}>
+                 <SvgXml xml={tokenIconSvg} />
+                 <Text style={[styles.iconText, {bottom: 30, fontSize: 12}]}>Recharge</Text>
+                 <Text style={[styles.iconText, {bottom: 10, fontSize: 12}]}>tokens</Text>
+               </View>
+             </TouchableOpacity>
           </View>
         </View>
         <SvgXml xml={tokenLogoSvg} style={styles.tokenLogo} />
-        <View style={styles.rectangleBaseContainer}>
-          <SvgXml xml={rectangleBaseSvg} style={styles.rectangleBase} />
-        </View>
-        
-        <TouchableOpacity 
-          style={styles.tokensButton}
-          onPress={() => router.push('/tokens')}
-        >
-          <Text style={styles.tokensButtonText}>Manage Tokens</Text>
-        </TouchableOpacity>
       </View>
     </>
   );
@@ -140,18 +137,7 @@ const styles = StyleSheet.create({
     fontSize: 45,
     lineHeight: 45,
     color: '#000',
-  },
-  consciousText: {
-    fontFamily: 'PublicSans_700Bold',
-    fontSize: 45,
-    lineHeight: 45,
-    color: '#000',
-  },
-  oneText: {
-    fontFamily: 'PublicSans_700Bold',
-    fontSize: 45,
-    lineHeight: 45,
-    color: '#000',
+    fontWeight: 'bold',
   },
   iconGrid: {
     marginTop: 40,
@@ -193,32 +179,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: '100%',
     paddingHorizontal: 4,
-  },
-  rectangleBaseContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  rectangleBase: {
-    width: '100%',
-    height: 60,
-  },
-  tokensButton: {
-    position: 'absolute',
-    bottom: 80,
-    right: 20,
-    backgroundColor: '#E42F45',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    elevation: 3,
-  },
-  tokensButtonText: {
-    fontFamily: 'PublicSans_700Bold',
-    color: '#FFFFFF',
-    fontSize: 14,
   },
 });
 
