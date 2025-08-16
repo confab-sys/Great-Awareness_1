@@ -1,4 +1,12 @@
 pluginManagement {
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+    // Add Aliyun mirrors for faster downloads in China
+    maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+  }
+  
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
@@ -32,8 +40,6 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 expoAutolinking.useExpoModules()
 
 rootProject.name = 'Great-Awareness'
-
 expoAutolinking.useExpoVersionCatalog()
-
 include ':app'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)
