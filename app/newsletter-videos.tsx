@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import paymentService from '../services/paymentService';
 
 export default function NewsletterVideosPage() {
@@ -8,9 +8,19 @@ export default function NewsletterVideosPage() {
   const [isPowerWithinExpanded, setIsPowerWithinExpanded] = useState(false);
   const [isConfidenceExpanded, setIsConfidenceExpanded] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<{ title: string; price: number } | null>(null);
+  const [activeProduct, setActiveProduct] = useState<{
+    title: string;
+    price: number;
+    originalPrice: number;
+    image: any;
+    description: string;
+  } | null>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 480;
 
   const handlePayment = async () => {
     if (!phoneNumber) {
@@ -73,9 +83,19 @@ export default function NewsletterVideosPage() {
           <View style={styles.productsRow}>
             {/* Product 1: Unlocking the Primal Brain */}
             <TouchableOpacity 
-              style={styles.productWrapper}
-              onPress={() => setIsExpanded(!isExpanded)}
+              style={[styles.productWrapper, isNarrow && { flexBasis: '100%' }]}
               activeOpacity={0.8}
+              onPress={() => {
+                setActiveProduct({
+                  title: 'Unlocking the Primal Brain',
+                  price: 400,
+                  originalPrice: 1000,
+                  image: require('../assets/icons/unlocking the primal brain.png'),
+                  description:
+                    'The Hidden Force Shaping Your Thoughts & Emotions. Why do we procrastinate, overthink, or get trapped in destructive habits—even when we know better? The answer lies deep within your primal brain, the ancient part of your mind that has been silently controlling your emotions, desires, and decisions since the dawn of time. In this groundbreaking book, Ashwa Aashard unravels the secret mechanisms behind fear, addiction, motivation, and emotional reactions, showing you how to break free from unconscious patterns and take full control of your life.'
+                });
+                setShowProductModal(true);
+              }}
             >
               <View style={styles.bookContainer}>
                 <View style={styles.bookImageContainer}>
@@ -87,20 +107,6 @@ export default function NewsletterVideosPage() {
                 </View>
                 <View style={styles.bookContent}>
                   <Text style={styles.bookTitle}>Unlocking the Primal Brain</Text>
-                  {isExpanded && (
-                    <Text style={styles.bookDescription}>
-                      The Hidden Force Shaping Your Thoughts & Emotions{'\n\n'}
-                      Why do we procrastinate, overthink, or get trapped in destructive habits—even when we know better?{'\n\n'}
-                      The answer lies deep within your primal brain, the ancient part of your mind that has been silently controlling your emotions, desires, and decisions since the dawn of time.{'\n\n'}
-                      In this groundbreaking book, Ashwa Aashard unravels the secret mechanisms behind fear, addiction, motivation, and emotional reactions, showing you how to break free from unconscious patterns and take full control of your life.{'\n\n'}
-                      Why do you react emotionally before you even think?{'\n'}
-                      How does dopamine trick you into addiction, bad habits, and social media loops?{'\n'}
-                      Why is your brain wired for fear, anger, and impulsive decisions—and how can you override it?{'\n'}
-                      What practical steps can you take to break free from self-sabotage and master your emotions?{'\n\n'}
-                      Combining neuroscience, psychology, and real-world insights, this book will teach you how to rewire your mind, master your emotions, and take charge of your future.{'\n\n'}
-                      💡 If you've ever felt like your brain is working against you, this book is the key to unlocking its full power.
-                    </Text>
-                  )}
                   <View style={styles.priceContainer}>
                     <Text style={styles.originalPrice}>was kes 1000</Text>
                     <Text style={styles.discountPrice}> and now ksh </Text>
@@ -110,24 +116,38 @@ export default function NewsletterVideosPage() {
                     style={styles.buyButton}
                     onPress={(e) => {
                       e.stopPropagation();
-                      setSelectedProduct({ title: 'Unlocking the Primal Brain', price: 400 });
-                      setShowPaymentModal(true);
+                      setActiveProduct({
+                        title: 'Unlocking the Primal Brain',
+                        price: 400,
+                        originalPrice: 1000,
+                        image: require('../assets/icons/unlocking the primal brain.png'),
+                        description:
+                          'The Hidden Force Shaping Your Thoughts & Emotions. Why do we procrastinate, overthink, or get trapped in destructive habits—even when we know better? The answer lies deep within your primal brain, the ancient part of your mind that has been silently controlling your emotions, desires, and decisions since the dawn of time. In this groundbreaking book, Ashwa Aashard unravels the secret mechanisms behind fear, addiction, motivation, and emotional reactions, showing you how to break free from unconscious patterns and take full control of your life.'
+                      });
+                      setShowProductModal(true);
                     }}
                   >
                     <Text style={styles.buyButtonText}>Buy Now</Text>
                   </TouchableOpacity>
-                  <Text style={styles.tapHint}>
-                    {isExpanded ? 'Tap to collapse' : 'Tap to read more'}
-                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
 
             {/* Product 2: The Confidence Map */}
             <TouchableOpacity 
-              style={styles.productWrapper}
+              style={[styles.productWrapper, isNarrow && { flexBasis: '100%' }]}
               activeOpacity={0.8}
-              onPress={() => setIsConfidenceExpanded(!isConfidenceExpanded)}
+              onPress={() => {
+                setActiveProduct({
+                  title: 'The Confidence Map',
+                  price: 250,
+                  originalPrice: 500,
+                  image: require('../assets/icons/The Confidence Map.png'),
+                  description:
+                    'Confidence: Rewiring the Primal Brain to Lead with Power, Not Fear is a comprehensive guide by Ashwa Aashard that explores the concept of confidence as a nervous system state rather than a personality trait. The book delves into how the primal brain often hijacks our confidence through fear and hesitation, and shows how to retrain your system through small, consistent actions to lead authentically in public speaking, business, relationships, and more.'
+                });
+                setShowProductModal(true);
+              }}
             >
               <View style={styles.bookContainer}>
                 <View style={styles.bookImageContainer}>
@@ -139,13 +159,6 @@ export default function NewsletterVideosPage() {
                 </View>
                 <View style={styles.bookContent}>
                   <Text style={styles.bookTitle}>The Confidence Map</Text>
-                  {isConfidenceExpanded && (
-                    <Text style={styles.bookDescription}>
-                      Confidence: Rewiring the Primal Brain to Lead with Power, Not Fear is a comprehensive guide by Ashwa Aashard that explores the concept of confidence as a nervous system state rather than a personality trait. The book delves into how the primal brain, an ancient part of our brain evolved for survival, often hijacks our confidence through fear and hesitation. It explains that true confidence arises when we feel safe enough to be seen and express ourselves authentically.
-                      {'\n\n'}The author outlines various signs of lack of confidence, such as overthinking before speaking, avoiding eye contact, excessive apologizing, physical tension, avoiding new experiences, self-criticism, fear of judgment, indecision, discomfort with receiving praise, and needing permission before acting. Each of these behaviors is rooted in the primal brain's survival mechanisms, and the book provides practical solutions to rewire these patterns.
-                      {'\n\n'}The guide emphasizes the importance of confidence in various areas of life, including public speaking, business, social relationships, career development, personal growth, and parenting. It advocates for small, incremental actions that help retrain the nervous system to feel safe in situations that previously triggered fear or hesitation. By doing so, individuals can unlock their true potential and lead a life aligned with their conscious choices rather than being driven by primal fears.
-                    </Text>
-                  )}
                   <View style={styles.priceContainer}>
                     <Text style={styles.originalPrice}>was kes 500</Text>
                     <Text style={styles.discountPrice}> and now ksh </Text>
@@ -154,15 +167,19 @@ export default function NewsletterVideosPage() {
                   <TouchableOpacity 
                     style={styles.buyButton}
                     onPress={() => {
-                      setSelectedProduct({ title: 'The Confidence Map', price: 250 });
-                      setShowPaymentModal(true);
+                      setActiveProduct({
+                        title: 'The Confidence Map',
+                        price: 250,
+                        originalPrice: 500,
+                        image: require('../assets/icons/The Confidence Map.png'),
+                        description:
+                          'Confidence: Rewiring the Primal Brain to Lead with Power, Not Fear is a comprehensive guide by Ashwa Aashard that explores the concept of confidence as a nervous system state rather than a personality trait. The book delves into how the primal brain often hijacks our confidence through fear and hesitation, and shows how to retrain your system through small, consistent actions to lead authentically in public speaking, business, relationships, and more.'
+                      });
+                      setShowProductModal(true);
                     }}
                   >
                     <Text style={styles.buyButtonText}>Buy Now</Text>
                   </TouchableOpacity>
-                  <Text style={styles.tapHint}>
-                    {isConfidenceExpanded ? 'Tap to collapse' : 'Tap to read more'}
-                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -172,9 +189,19 @@ export default function NewsletterVideosPage() {
           <View style={[styles.productsRow, { marginTop: 16 }]}>
             {/* The Power Within (moved to row 2) */}
             <TouchableOpacity 
-              style={styles.productWrapper}
+              style={[styles.productWrapper, isNarrow && { flexBasis: '100%' }]}
               activeOpacity={0.8}
-              onPress={() => setIsPowerWithinExpanded(!isPowerWithinExpanded)}
+              onPress={() => {
+                setActiveProduct({
+                  title: 'The Power Within',
+                  price: 500,
+                  originalPrice: 1200,
+                  image: require('../assets/icons/The power within.png'),
+                  description:
+                    'The Power Within: The Secret Behind Emotions You Didn’t Know unravels the hidden origins of emotions and how they continue to shape our lives today. Emotions evolved as powerful mechanisms to help us navigate challenges, make decisions, and survive. This book shows how understanding these roots gives you greater control over your life and growth.'
+                });
+                setShowProductModal(true);
+              }}
             >
               <View style={styles.bookContainer}>
                 <View style={styles.bookImageContainer}>
@@ -186,11 +213,6 @@ export default function NewsletterVideosPage() {
                 </View>
                 <View style={styles.bookContent}>
                   <Text style={styles.bookTitle}>The Power Within</Text>
-                  {isPowerWithinExpanded && (
-                    <Text style={styles.bookDescription}>
-                      The Power Within: The Secret Behind Emotions You Didn’t Know unravels the hidden origins of emotions and how they continue to shape our lives today. Emotions weren’t just randomly designed—they evolved as powerful mechanisms to help us navigate challenges, make decisions, and survive. From fear to love, from anger to joy, every feeling carries a deeper purpose rooted in our history. This book takes you on a journey to understand why you feel the way you do and how unlocking this knowledge can give you greater control over your life, decisions, and personal growth.
-                    </Text>
-                  )}
                   <View style={styles.priceContainer}>
                     <Text style={styles.originalPrice}>was kes 1200</Text>
                     <Text style={styles.discountPrice}> and now ksh </Text>
@@ -199,22 +221,36 @@ export default function NewsletterVideosPage() {
                   <TouchableOpacity 
                     style={styles.buyButton}
                     onPress={() => {
-                      setSelectedProduct({ title: 'The Power Within', price: 500 });
-                      setShowPaymentModal(true);
+                      setActiveProduct({
+                        title: 'The Power Within',
+                        price: 500,
+                        originalPrice: 1200,
+                        image: require('../assets/icons/The power within.png'),
+                        description:
+                          'The Power Within: The Secret Behind Emotions You Didn’t Know unravels the hidden origins of emotions and how they continue to shape our lives today. Emotions evolved as powerful mechanisms to help us navigate challenges, make decisions, and survive. This book shows how understanding these roots gives you greater control over your life and growth.'
+                      });
+                      setShowProductModal(true);
                     }}
                   >
                     <Text style={styles.buyButtonText}>Buy Now</Text>
                   </TouchableOpacity>
-                  <Text style={styles.tapHint}>
-                    {isPowerWithinExpanded ? 'Tap to collapse' : 'Tap to read more'}
-                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.productWrapper}
+              style={[styles.productWrapper, isNarrow && { flexBasis: '100%' }]}
               activeOpacity={0.8}
-              onPress={() => setIsConfusionExpanded(!isConfusionExpanded)}
+              onPress={() => {
+                setActiveProduct({
+                  title: 'No More Confusion',
+                  price: 400,
+                  originalPrice: 1000,
+                  image: require('../assets/icons/No more confusion.png'),
+                  description:
+                    'No More Confusion is a guide to uncovering your true calling and breaking free from mental fog. By understanding the psychology of decision-making and the hidden forces shaping your path, you’ll gain clarity and step into your true potential.'
+                });
+                setShowProductModal(true);
+              }}
             >
               <View style={styles.bookContainer}>
                 <View style={styles.bookImageContainer}>
@@ -226,16 +262,6 @@ export default function NewsletterVideosPage() {
                 </View>
                 <View style={styles.bookContent}>
                   <Text style={styles.bookTitle}>No More Confusion</Text>
-                  {isConfusionExpanded && (
-                    <Text style={styles.bookDescription}>
-                      No More Confusion is the ultimate guide to uncovering your true calling and breaking
-                      free from the mental fog that holds you back. If you’ve ever felt lost, stuck, or unsure
-                      about your purpose, this book will help you understand why—and more importantly, how to
-                      change it. By diving deep into the psychology of decision-making, self-actualization, and the
-                      hidden forces shaping your path, you’ll finally gain the clarity you need to step into your
-                      true potential. The answers have been in front of you all along—it’s time to see.
-                    </Text>
-                  )}
                   <View style={styles.priceContainer}>
                     <Text style={styles.originalPrice}>was kes 1000</Text>
                     <Text style={styles.discountPrice}> and now ksh </Text>
@@ -244,15 +270,19 @@ export default function NewsletterVideosPage() {
                   <TouchableOpacity 
                     style={styles.buyButton}
                     onPress={() => {
-                      setSelectedProduct({ title: 'No More Confusion', price: 400 });
-                      setShowPaymentModal(true);
+                      setActiveProduct({
+                        title: 'No More Confusion',
+                        price: 400,
+                        originalPrice: 1000,
+                        image: require('../assets/icons/No more confusion.png'),
+                        description:
+                          'No More Confusion is a guide to uncovering your true calling and breaking free from mental fog. By understanding the psychology of decision-making and the hidden forces shaping your path, you’ll gain clarity and step into your true potential.'
+                      });
+                      setShowProductModal(true);
                     }}
                   >
                     <Text style={styles.buyButtonText}>Buy Now</Text>
                   </TouchableOpacity>
-                  <Text style={styles.tapHint}>
-                    {isConfusionExpanded ? 'Tap to collapse' : 'Tap to read more'}
-                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -326,6 +356,51 @@ export default function NewsletterVideosPage() {
                 <Text style={styles.processingText}>Sending payment request...</Text>
                 <Text style={styles.processingSubtext}>Please wait</Text>
               </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Product Details Modal */}
+      <Modal
+        visible={showProductModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowProductModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {activeProduct && (
+              <>
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <Image source={activeProduct.image} style={{ width: 120, height: 160, borderRadius: 8 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.headerTitle, { fontSize: 22, marginBottom: 8 }]}>{activeProduct.title}</Text>
+                <Text style={{ fontSize: 14, color: '#333', marginBottom: 16 }}>{activeProduct.description}</Text>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.originalPrice}>was kes {activeProduct.originalPrice}</Text>
+                  <Text style={styles.discountPrice}> and now ksh </Text>
+                  <Text style={styles.finalPrice}>{activeProduct.price}</Text>
+                </View>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.cancelButton]}
+                    onPress={() => setShowProductModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Close</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.confirmButton]}
+                    onPress={() => {
+                      setSelectedProduct({ title: activeProduct.title, price: activeProduct.price });
+                      setShowProductModal(false);
+                      setShowPaymentModal(true);
+                    }}
+                  >
+                    <Text style={styles.confirmButtonText}>Buy Now</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
             )}
           </View>
         </View>
@@ -435,10 +510,13 @@ const styles = StyleSheet.create({
   },
   productsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
+    justifyContent: 'space-between',
   },
   productWrapper: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '48%',
   },
   // Modal Styles
   modalOverlay: {
