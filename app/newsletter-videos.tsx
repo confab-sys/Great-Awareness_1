@@ -60,7 +60,7 @@ export default function NewsletterVideosPage() {
       <ScrollView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Newsletter & Videos</Text>
+          <Text style={styles.headerTitle}>Books</Text>
         </View>
         
         {/* Products Section */}
