@@ -14,8 +14,12 @@ export default function TabLayout() {
             position: 'absolute',
           },
           web: {
-            // Hide bottom navigation on web
-            display: 'none',
+            // Hide bottom navigation on web without collapsing layout
+            height: 0,
+            position: 'absolute',
+            overflow: 'hidden',
+            borderTopWidth: 0,
+            elevation: 0,
           },
           default: {},
         }),

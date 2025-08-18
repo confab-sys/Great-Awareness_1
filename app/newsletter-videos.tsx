@@ -4,6 +4,7 @@ import paymentService from '../services/paymentService';
 
 export default function NewsletterVideosPage() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isConfusionExpanded, setIsConfusionExpanded] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -62,56 +63,105 @@ export default function NewsletterVideosPage() {
           <Text style={styles.headerTitle}>Newsletter & Videos</Text>
         </View>
         
-               {/* Book Section */}
-         <TouchableOpacity 
-           style={styles.bookSection}
-           onPress={() => setIsExpanded(!isExpanded)}
-           activeOpacity={0.8}
-         >
-           <View style={styles.bookContainer}>
-             <View style={styles.bookImageContainer}>
-               <Image 
-                 source={require('../assets/icons/unlocking the primal brain.png')}
-                 style={styles.bookImage}
-                 resizeMode="contain"
-               />
-             </View>
-             <View style={styles.bookContent}>
-               <Text style={styles.bookTitle}>Unlocking the Primal Brain</Text>
-               {isExpanded && (
-                 <Text style={styles.bookDescription}>
-                   The Hidden Force Shaping Your Thoughts & Emotions{'\n\n'}
-                   Why do we procrastinate, overthink, or get trapped in destructive habits—even when we know better?{'\n\n'}
-                   The answer lies deep within your primal brain, the ancient part of your mind that has been silently controlling your emotions, desires, and decisions since the dawn of time.{'\n\n'}
-                   In this groundbreaking book, Ashwa Aashard unravels the secret mechanisms behind fear, addiction, motivation, and emotional reactions, showing you how to break free from unconscious patterns and take full control of your life.{'\n\n'}
-                   Why do you react emotionally before you even think?{'\n'}
-                   How does dopamine trick you into addiction, bad habits, and social media loops?{'\n'}
-                   Why is your brain wired for fear, anger, and impulsive decisions—and how can you override it?{'\n'}
-                   What practical steps can you take to break free from self-sabotage and master your emotions?{'\n\n'}
-                   Combining neuroscience, psychology, and real-world insights, this book will teach you how to rewire your mind, master your emotions, and take charge of your future.{'\n\n'}
-                   💡 If you've ever felt like your brain is working against you, this book is the key to unlocking its full power.
-                 </Text>
-               )}
-               <View style={styles.priceContainer}>
-                 <Text style={styles.originalPrice}>was kes 1000</Text>
-                 <Text style={styles.discountPrice}> and now ksh </Text>
-                 <Text style={styles.finalPrice}>400</Text>
-               </View>
-               <TouchableOpacity 
-                 style={styles.buyButton}
-                 onPress={(e) => {
-                   e.stopPropagation();
-                   setShowPaymentModal(true);
-                 }}
-               >
-                 <Text style={styles.buyButtonText}>Buy Now</Text>
-               </TouchableOpacity>
-               <Text style={styles.tapHint}>
-                 {isExpanded ? 'Tap to collapse' : 'Tap to read more'}
-               </Text>
-             </View>
-           </View>
-         </TouchableOpacity>
+        {/* Products Section */}
+        <View style={styles.bookSection}>
+          <View style={styles.productsRow}>
+            {/* Product 1: Unlocking the Primal Brain */}
+            <TouchableOpacity 
+              style={styles.productWrapper}
+              onPress={() => setIsExpanded(!isExpanded)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.bookContainer}>
+                <View style={styles.bookImageContainer}>
+                  <Image 
+                    source={require('../assets/icons/unlocking the primal brain.png')}
+                    style={styles.bookImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.bookContent}>
+                  <Text style={styles.bookTitle}>Unlocking the Primal Brain</Text>
+                  {isExpanded && (
+                    <Text style={styles.bookDescription}>
+                      The Hidden Force Shaping Your Thoughts & Emotions{'\n\n'}
+                      Why do we procrastinate, overthink, or get trapped in destructive habits—even when we know better?{'\n\n'}
+                      The answer lies deep within your primal brain, the ancient part of your mind that has been silently controlling your emotions, desires, and decisions since the dawn of time.{'\n\n'}
+                      In this groundbreaking book, Ashwa Aashard unravels the secret mechanisms behind fear, addiction, motivation, and emotional reactions, showing you how to break free from unconscious patterns and take full control of your life.{'\n\n'}
+                      Why do you react emotionally before you even think?{'\n'}
+                      How does dopamine trick you into addiction, bad habits, and social media loops?{'\n'}
+                      Why is your brain wired for fear, anger, and impulsive decisions—and how can you override it?{'\n'}
+                      What practical steps can you take to break free from self-sabotage and master your emotions?{'\n\n'}
+                      Combining neuroscience, psychology, and real-world insights, this book will teach you how to rewire your mind, master your emotions, and take charge of your future.{'\n\n'}
+                      💡 If you've ever felt like your brain is working against you, this book is the key to unlocking its full power.
+                    </Text>
+                  )}
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.originalPrice}>was kes 1000</Text>
+                    <Text style={styles.discountPrice}> and now ksh </Text>
+                    <Text style={styles.finalPrice}>400</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.buyButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setShowPaymentModal(true);
+                    }}
+                  >
+                    <Text style={styles.buyButtonText}>Buy Now</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.tapHint}>
+                    {isExpanded ? 'Tap to collapse' : 'Tap to read more'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Product 2: No More Confusion */}
+            <TouchableOpacity 
+              style={styles.productWrapper}
+              activeOpacity={0.8}
+              onPress={() => setIsConfusionExpanded(!isConfusionExpanded)}
+            >
+              <View style={styles.bookContainer}>
+                <View style={styles.bookImageContainer}>
+                  <Image 
+                    source={require('../assets/icons/No more confusion.png')}
+                    style={styles.bookImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.bookContent}>
+                  <Text style={styles.bookTitle}>No More Confusion</Text>
+                  {isConfusionExpanded && (
+                    <Text style={styles.bookDescription}>
+                      No More Confusion is the ultimate guide to uncovering your true calling and breaking
+                      free from the mental fog that holds you back. If you’ve ever felt lost, stuck, or unsure
+                      about your purpose, this book will help you understand why—and more importantly, how to
+                      change it. By diving deep into the psychology of decision-making, self-actualization, and the
+                      hidden forces shaping your path, you’ll finally gain the clarity you need to step into your
+                      true potential. The answers have been in front of you all along—it’s time to see.
+                    </Text>
+                  )}
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.originalPrice}>was kes 1000</Text>
+                    <Text style={styles.discountPrice}> and now ksh </Text>
+                    <Text style={styles.finalPrice}>400</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.buyButton}
+                    onPress={() => setShowPaymentModal(true)}
+                  >
+                    <Text style={styles.buyButtonText}>Buy Now</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.tapHint}>
+                    {isConfusionExpanded ? 'Tap to collapse' : 'Tap to read more'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
 
       {/* M-Pesa Payment Modal */}
@@ -285,6 +335,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     fontStyle: 'italic',
+  },
+  productsRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  productWrapper: {
+    flex: 1,
   },
   // Modal Styles
   modalOverlay: {

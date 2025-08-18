@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function HomeScreen() {
   const COLORS = ['#1C2922', '#E42F45', '#D3E4DE', '#893245'];
@@ -31,6 +31,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: COLORS[colorIndex] }]}>
+      <Text style={styles.title}>Home</Text>
     </View>
   );
 }
@@ -40,5 +41,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#000',
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
 });
