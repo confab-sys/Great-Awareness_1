@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import paymentService from '../services/paymentService';
+import sheetStatusService from '../services/sheetStatusService';
 
 export default function NewsletterVideosPage() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -19,8 +20,15 @@ export default function NewsletterVideosPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [downloadLink, setDownloadLink] = useState<string | null>(null);
   const { width } = useWindowDimensions();
   const isNarrow = width < 480;
+
+  const DOWNLOAD_LINKS: Record<string, string> = {
+    'Unlocking the Primal Brain': 'https://drive.google.com/file/d/1_wIIkiGz6yDPdMupfqUmTbM2cYm_u7AJ/view?usp=drive_link',
+  };
 
   const handlePayment = async () => {
     if (!phoneNumber) {
@@ -29,6 +37,7 @@ export default function NewsletterVideosPage() {
     }
 
     setIsProcessing(true);
+    setDownloadLink(null);
     console.log('Starting payment process with phone number:', phoneNumber);
     
     try {
@@ -40,14 +49,14 @@ export default function NewsletterVideosPage() {
       
       if (result && result.success) {
         console.log('Payment request successful, transaction ID:', result.transactionId);
+        // Store transaction id for status check
+        if (result.transactionId) {
+          setPendingTransactionId(result.transactionId);
+        }
         Alert.alert(
           'Payment Request Sent!', 
-          'Please check your phone for the M-Pesa payment prompt. Enter your PIN to complete the payment.',
-          [{ text: 'OK', onPress: () => {
-            setShowPaymentModal(false);
-            setPhoneNumber('');
-            setSelectedProduct(null);
-          }}]
+          'Approve the M-Pesa prompt on your phone, then tap "Check Payment Status" below to continue.',
+          [{ text: 'OK' }]
         );
       } else {
         console.error('Payment failed:', result?.message, result);
@@ -67,6 +76,62 @@ export default function NewsletterVideosPage() {
       Alert.alert('Error', 'Failed to process payment. Please try again.');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleCheckPaymentStatus = async () => {
+    try {
+      if (!pendingTransactionId) {
+        Alert.alert('No Transaction', 'There is no pending transaction to check.');
+        return;
+      }
+      setIsChecking(true);
+      console.log('🔍 Checking transaction status in Google Sheet for ID:', pendingTransactionId);
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
+      });
+      
+      // Use Google Sheet lookup instead of payment API
+      const statusPromise = sheetStatusService.checkTransactionStatus(pendingTransactionId);
+      const statusResult = await Promise.race([statusPromise, timeoutPromise]) as any;
+      
+      console.log('📊 Google Sheet status result:', statusResult);
+      
+      const productTitle = selectedProduct?.title || activeProduct?.title || '';
+      
+      if (statusResult.success && statusResult.found && statusResult.transaction) {
+        const transaction = statusResult.transaction;
+        console.log('✅ Transaction found in Google Sheet:', transaction);
+        
+        // Check if the transaction status is CONFIRMED
+        if (transaction.status === 'CONFIRMED') {
+          console.log('🎉 Transaction confirmed for product:', productTitle);
+          
+          // Show download link for "Unlocking the Primal Brain"
+          if (productTitle === 'Unlocking the Primal Brain') {
+            const url = DOWNLOAD_LINKS['Unlocking the Primal Brain'];
+            if (url) {
+              setDownloadLink(url);
+              console.log('📥 Download link set for Unlocking the Primal Brain');
+            }
+          } else {
+            Alert.alert('Payment Confirmed', 'Payment confirmed successfully.');
+          }
+        } else {
+          console.log('⏳ Transaction found but not confirmed yet. Status:', transaction.status);
+          Alert.alert('Payment Pending', `Transaction found but status is: ${transaction.status}. Please wait for confirmation.`);
+        }
+      } else {
+        console.log('❌ Transaction not found in Google Sheet or error occurred:', statusResult);
+        Alert.alert('Not Found', 'Transaction not found in our records. Please ensure payment was completed and try again.');
+      }
+    } catch (err) {
+      console.error('❌ Status check error:', err);
+      Alert.alert('Error', 'Failed to check payment status. Please try again.');
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -333,6 +398,7 @@ export default function NewsletterVideosPage() {
                   setShowPaymentModal(false);
                   setPhoneNumber('');
                   setSelectedProduct(null);
+                  setPendingTransactionId(null);
                 }}
                 disabled={isProcessing}
               >
@@ -348,6 +414,28 @@ export default function NewsletterVideosPage() {
                   {isProcessing ? 'Processing...' : 'Send Payment Request'}
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            {/* Status Check Button */}
+            <View style={[styles.modalButtons, { marginTop: 12 }]}>
+              {downloadLink ? (
+                <TouchableOpacity 
+                  style={[styles.modalButton, { backgroundColor: '#0d6efd' }]}
+                  onPress={() => Linking.openURL(downloadLink)}
+                >
+                  <Text style={[styles.confirmButtonText, { color: '#FFFFFF' }]}>Open Download</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  style={[styles.modalButton, { backgroundColor: pendingTransactionId ? '#0d6efd' : '#CCCCCC' }]}
+                  onPress={handleCheckPaymentStatus}
+                  disabled={!pendingTransactionId || isChecking}
+                >
+                  <Text style={[styles.confirmButtonText, { color: '#FFFFFF' }]}>
+                    {isChecking ? 'Checking...' : 'Check Payment Status'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Processing Indicator */}

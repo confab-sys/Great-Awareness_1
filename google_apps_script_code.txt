@@ -1,0 +1,126 @@
+// Google Apps Script Code for Transaction Logging and Status Checking
+
+// Function to handle POST requests (existing logging function)
+function doPost(e) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const data = JSON.parse(e.postData.contents);
+    
+    // Add timestamp and log the data
+    const row = [
+      new Date(), // Timestamp
+      data.timestamp || new Date().toISOString(),
+      data.product || 'Unknown',
+      data.amount || 0,
+      data.msisdn || 'Unknown',
+      data.transactionId || 'Unknown',
+      data.status || 'Unknown'
+    ];
+    
+    sheet.appendRow(row);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: true, message: 'Data logged successfully' }))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// NEW FUNCTION: Search for transaction by ID
+function doGet(e) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const transactionId = e.parameter.transactionId;
+    
+    if (!transactionId) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'Transaction ID is required' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Get all data from the sheet
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0]; // First row contains headers
+    
+    // Find the transaction ID column index
+    const transactionIdColIndex = headers.findIndex(header => 
+      header.toString().toLowerCase().includes('transactionid') || 
+      header.toString().toLowerCase().includes('transaction id')
+    );
+    
+    // Find the status column index
+    const statusColIndex = headers.findIndex(header => 
+      header.toString().toLowerCase().includes('status')
+    );
+    
+    if (transactionIdColIndex === -1) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: false, 
+          error: 'Transaction ID column not found' 
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Search for the transaction
+    let foundTransaction = null;
+    for (let i = 1; i < data.length; i++) { // Start from row 1 (skip headers)
+      const row = data[i];
+      const rowTransactionId = row[transactionIdColIndex];
+      
+      if (rowTransactionId && rowTransactionId.toString() === transactionId) {
+        foundTransaction = {
+          rowIndex: i + 1, // +1 because sheet rows are 1-indexed
+          transactionId: rowTransactionId,
+          status: statusColIndex !== -1 ? row[statusColIndex] : 'Unknown',
+          product: row[2] || 'Unknown', // Assuming product is in column 3
+          amount: row[3] || 0, // Assuming amount is in column 4
+          msisdn: row[4] || 'Unknown', // Assuming msisdn is in column 5
+          timestamp: row[1] || 'Unknown' // Assuming timestamp is in column 2
+        };
+        break;
+      }
+    }
+    
+    if (foundTransaction) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          found: true,
+          transaction: foundTransaction
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } else {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          found: false,
+          message: 'Transaction not found'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: error.toString() 
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Instructions for setup:
+// 1. Go to your Google Apps Script project
+// 2. Replace the existing doPost function with this new code
+// 3. Add the new doGet function
+// 4. Deploy as a new version
+// 5. Copy the new Web App URL
+// 6. Update the URL in your app's constants file
