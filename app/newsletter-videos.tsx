@@ -5,6 +5,9 @@ import paymentService from '../services/paymentService';
 export default function NewsletterVideosPage() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isConfusionExpanded, setIsConfusionExpanded] = useState(false);
+  const [isPowerWithinExpanded, setIsPowerWithinExpanded] = useState(false);
+  const [isConfidenceExpanded, setIsConfidenceExpanded] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{ title: string; price: number } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,11 +23,12 @@ export default function NewsletterVideosPage() {
     
     try {
       // Use paymentService with PesaFlux provider
-      console.log('Calling paymentService.sendSTKPush with:', phoneNumber, 400, 'pesaflux');
-      const result = await paymentService.sendSTKPush(phoneNumber, 400, 'pesaflux');
+      const amount = selectedProduct?.price ?? 400;
+      console.log('Calling paymentService.sendSTKPush with:', phoneNumber, amount, 'pesaflux');
+      const result = await paymentService.sendSTKPush(phoneNumber, amount, 'pesaflux');
       console.log('Payment API response:', result);
       
-      if (result.success) {
+      if (result && result.success) {
         console.log('Payment request successful, transaction ID:', result.transactionId);
         Alert.alert(
           'Payment Request Sent!', 
@@ -32,19 +36,20 @@ export default function NewsletterVideosPage() {
           [{ text: 'OK', onPress: () => {
             setShowPaymentModal(false);
             setPhoneNumber('');
+            setSelectedProduct(null);
           }}]
         );
       } else {
-        console.error('Payment failed:', result.message, result);
+        console.error('Payment failed:', result?.message, result);
         
         // Handle specific error types
-        if (result.error && result.error.code === 'ERR_NETWORK') {
+        if (result && (result as any).error?.code === 'ERR_NETWORK') {
           Alert.alert(
             'Network Error', 
             'Unable to connect to payment server. Please check your internet connection and try again.'
           );
         } else {
-          Alert.alert('Payment Failed', result.message || 'Unknown error occurred');
+          Alert.alert('Payment Failed', (result && result.message) || 'Unknown error occurred');
         }
       }
     } catch (error) {
@@ -105,6 +110,7 @@ export default function NewsletterVideosPage() {
                     style={styles.buyButton}
                     onPress={(e) => {
                       e.stopPropagation();
+                      setSelectedProduct({ title: 'Unlocking the Primal Brain', price: 400 });
                       setShowPaymentModal(true);
                     }}
                   >
@@ -117,7 +123,94 @@ export default function NewsletterVideosPage() {
               </View>
             </TouchableOpacity>
 
-            {/* Product 2: No More Confusion */}
+            {/* Product 2: The Confidence Map */}
+            <TouchableOpacity 
+              style={styles.productWrapper}
+              activeOpacity={0.8}
+              onPress={() => setIsConfidenceExpanded(!isConfidenceExpanded)}
+            >
+              <View style={styles.bookContainer}>
+                <View style={styles.bookImageContainer}>
+                  <Image 
+                    source={require('../assets/icons/The Confidence Map.png')}
+                    style={styles.bookImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.bookContent}>
+                  <Text style={styles.bookTitle}>The Confidence Map</Text>
+                  {isConfidenceExpanded && (
+                    <Text style={styles.bookDescription}>
+                      Confidence: Rewiring the Primal Brain to Lead with Power, Not Fear is a comprehensive guide by Ashwa Aashard that explores the concept of confidence as a nervous system state rather than a personality trait. The book delves into how the primal brain, an ancient part of our brain evolved for survival, often hijacks our confidence through fear and hesitation. It explains that true confidence arises when we feel safe enough to be seen and express ourselves authentically.
+                      {'\n\n'}The author outlines various signs of lack of confidence, such as overthinking before speaking, avoiding eye contact, excessive apologizing, physical tension, avoiding new experiences, self-criticism, fear of judgment, indecision, discomfort with receiving praise, and needing permission before acting. Each of these behaviors is rooted in the primal brain's survival mechanisms, and the book provides practical solutions to rewire these patterns.
+                      {'\n\n'}The guide emphasizes the importance of confidence in various areas of life, including public speaking, business, social relationships, career development, personal growth, and parenting. It advocates for small, incremental actions that help retrain the nervous system to feel safe in situations that previously triggered fear or hesitation. By doing so, individuals can unlock their true potential and lead a life aligned with their conscious choices rather than being driven by primal fears.
+                    </Text>
+                  )}
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.originalPrice}>was kes 500</Text>
+                    <Text style={styles.discountPrice}> and now ksh </Text>
+                    <Text style={styles.finalPrice}>250</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.buyButton}
+                    onPress={() => {
+                      setSelectedProduct({ title: 'The Confidence Map', price: 250 });
+                      setShowPaymentModal(true);
+                    }}
+                  >
+                    <Text style={styles.buyButtonText}>Buy Now</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.tapHint}>
+                    {isConfidenceExpanded ? 'Tap to collapse' : 'Tap to read more'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Second Row: The Power Within + No More Confusion */}
+          <View style={[styles.productsRow, { marginTop: 16 }]}>
+            {/* The Power Within (moved to row 2) */}
+            <TouchableOpacity 
+              style={styles.productWrapper}
+              activeOpacity={0.8}
+              onPress={() => setIsPowerWithinExpanded(!isPowerWithinExpanded)}
+            >
+              <View style={styles.bookContainer}>
+                <View style={styles.bookImageContainer}>
+                  <Image 
+                    source={require('../assets/icons/The power within.png')}
+                    style={styles.bookImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.bookContent}>
+                  <Text style={styles.bookTitle}>The Power Within</Text>
+                  {isPowerWithinExpanded && (
+                    <Text style={styles.bookDescription}>
+                      The Power Within: The Secret Behind Emotions You Didn’t Know unravels the hidden origins of emotions and how they continue to shape our lives today. Emotions weren’t just randomly designed—they evolved as powerful mechanisms to help us navigate challenges, make decisions, and survive. From fear to love, from anger to joy, every feeling carries a deeper purpose rooted in our history. This book takes you on a journey to understand why you feel the way you do and how unlocking this knowledge can give you greater control over your life, decisions, and personal growth.
+                    </Text>
+                  )}
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.originalPrice}>was kes 1200</Text>
+                    <Text style={styles.discountPrice}> and now ksh </Text>
+                    <Text style={styles.finalPrice}>500</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.buyButton}
+                    onPress={() => {
+                      setSelectedProduct({ title: 'The Power Within', price: 500 });
+                      setShowPaymentModal(true);
+                    }}
+                  >
+                    <Text style={styles.buyButtonText}>Buy Now</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.tapHint}>
+                    {isPowerWithinExpanded ? 'Tap to collapse' : 'Tap to read more'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles.productWrapper}
               activeOpacity={0.8}
@@ -150,7 +243,10 @@ export default function NewsletterVideosPage() {
                   </View>
                   <TouchableOpacity 
                     style={styles.buyButton}
-                    onPress={() => setShowPaymentModal(true)}
+                    onPress={() => {
+                      setSelectedProduct({ title: 'No More Confusion', price: 400 });
+                      setShowPaymentModal(true);
+                    }}
                   >
                     <Text style={styles.buyButtonText}>Buy Now</Text>
                   </TouchableOpacity>
@@ -181,9 +277,9 @@ export default function NewsletterVideosPage() {
 
             {/* Payment Details */}
             <View style={styles.paymentDetails}>
-              <Text style={styles.amountText}>Amount: KSH 400</Text>
+              <Text style={styles.amountText}>Amount: KSH {(selectedProduct?.price ?? 400).toString()}</Text>
               <Text style={styles.recipientText}>Recipient: Great Awareness</Text>
-              <Text style={styles.referenceText}>Reference: Book Purchase</Text>
+              <Text style={styles.referenceText}>Reference: {selectedProduct?.title ?? 'Book Purchase'}</Text>
             </View>
 
             {/* Phone Number Input */}
@@ -206,6 +302,7 @@ export default function NewsletterVideosPage() {
                 onPress={() => {
                   setShowPaymentModal(false);
                   setPhoneNumber('');
+                  setSelectedProduct(null);
                 }}
                 disabled={isProcessing}
               >
