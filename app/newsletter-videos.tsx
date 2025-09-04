@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Image, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import googleSheetService from '../services/googleSheetService';
+import googleSheetWriter from '../services/googleSheetWriter';
+import ipService from '../services/ipService';
 import paymentService from '../services/paymentService';
-import sheetStatusService from '../services/sheetStatusService';
 
 export default function NewsletterVideosPage() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -23,11 +25,20 @@ export default function NewsletterVideosPage() {
   const [isChecking, setIsChecking] = useState(false);
   const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
   const [downloadLink, setDownloadLink] = useState<string | null>(null);
+  const [autoCheckInterval, setAutoCheckInterval] = useState<number | null>(null);
+  const [isAutoChecking, setIsAutoChecking] = useState(false);
+  const [lastPaymentAttempt, setLastPaymentAttempt] = useState<{
+    phoneNumber: string;
+    productTitle: string;
+    amount: number;
+    timestamp: number;
+  } | null>(null);
   const { width } = useWindowDimensions();
   const isNarrow = width < 480;
 
   const DOWNLOAD_LINKS: Record<string, string> = {
     'Unlocking the Primal Brain': 'https://drive.google.com/file/d/1_wIIkiGz6yDPdMupfqUmTbM2cYm_u7AJ/view?usp=drive_link',
+    'The Confidence Map': 'https://drive.google.com/file/d/1m8VHhQzvVBhzIKMfFQRFQwvKRoO9Xtr4/view?usp=drive_link',
   };
 
   const handlePayment = async () => {
@@ -43,21 +54,36 @@ export default function NewsletterVideosPage() {
     try {
       // Use paymentService with PesaFlux provider
       const amount = selectedProduct?.price ?? 400;
-      console.log('Calling paymentService.sendSTKPush with:', phoneNumber, amount, 'pesaflux');
-      const result = await paymentService.sendSTKPush(phoneNumber, amount, 'pesaflux');
+      const productTitle = selectedProduct?.title ?? 'Unknown Product';
+      console.log('Calling paymentService.sendSTKPush with:', phoneNumber, amount, 'pesaflux', productTitle);
+      const result = await paymentService.sendSTKPush(phoneNumber, amount, 'pesaflux', productTitle);
       console.log('Payment API response:', result);
       
-      if (result && result.success) {
-        console.log('Payment request successful, transaction ID:', result.transactionId);
-        // Store transaction id for status check
-        if (result.transactionId) {
-          setPendingTransactionId(result.transactionId);
-        }
-        Alert.alert(
-          'Payment Request Sent!', 
-          'Approve the M-Pesa prompt on your phone, then tap "Check Payment Status" below to continue.',
-          [{ text: 'OK' }]
-        );
+             if (result && result.success) {
+         console.log('Payment request successful, transaction ID:', (result as any).transactionId);
+         // Store transaction id for status check
+         if ((result as any).transactionId) {
+           setPendingTransactionId((result as any).transactionId);
+         }
+         
+         // Store payment attempt details for background checking
+         setLastPaymentAttempt({
+           phoneNumber: phoneNumber,
+           productTitle: selectedProduct?.title || activeProduct?.title || '',
+           amount: selectedProduct?.price || activeProduct?.price || 0,
+           timestamp: Date.now()
+         });
+         
+         Alert.alert(
+           'Payment Request Sent!', 
+           'Approve the M-Pesa prompt on your phone. We will automatically check for payment confirmation every 5 seconds.',
+           [{ text: 'OK' }]
+         );
+         
+         // Start automatic payment checking after 5 seconds
+         setTimeout(() => {
+           startAutoCheck();
+         }, 5000);
       } else {
         console.error('Payment failed:', result?.message, result);
         
@@ -83,65 +109,394 @@ export default function NewsletterVideosPage() {
     try {
       if (!pendingTransactionId) {
         Alert.alert('No Transaction', 'There is no pending transaction to check.');
-        return;
+        return false;
       }
+      
       setIsChecking(true);
-      console.log('🔍 Checking transaction status in Google Sheet for ID:', pendingTransactionId);
+      console.log('🔍 Checking PesaFlux transaction status for ID:', pendingTransactionId);
       
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
       });
       
-      // Use Google Sheet lookup instead of payment API
-      const statusPromise = sheetStatusService.checkTransactionStatus(pendingTransactionId);
+      // Check transaction status using PesaFlux API
+      const statusPromise = paymentService.checkTransactionStatus(pendingTransactionId);
       const statusResult = await Promise.race([statusPromise, timeoutPromise]) as any;
       
-      console.log('📊 Google Sheet status result:', statusResult);
+      console.log('📊 PesaFlux transaction status result:', statusResult);
       
-      const productTitle = selectedProduct?.title || activeProduct?.title || '';
-      
-      if (statusResult.success && statusResult.found && statusResult.transaction) {
-        const transaction = statusResult.transaction;
-        console.log('✅ Transaction found in Google Sheet:', transaction);
+      if (statusResult.success) {
+        console.log('✅ Transaction found in PesaFlux:', statusResult);
         
-        // Check if the transaction status is CONFIRMED
-        if (transaction.status === 'CONFIRMED') {
-          console.log('🎉 Transaction confirmed for product:', productTitle);
+        // Check if the transaction status indicates success
+        // PesaFlux uses different status codes, typically "200" means success
+        const status = (statusResult as any).status || (statusResult as any).transactionCode || 'Unknown';
+        const resultCode = (statusResult as any).ResultCode || 'Unknown';
+        const transactionStatus = (statusResult as any).TransactionStatus || 'Unknown';
+        
+        console.log('🔍 Checking payment status:', { 
+          status, 
+          resultCode, 
+          transactionStatus,
+          fullResponse: statusResult 
+        });
+        
+        // Check multiple success indicators - be more flexible with status codes
+        const isSuccess = status === 'SUCCESS' || status === 'COMPLETED' || status === '200' || 
+            resultCode === '200' || resultCode === 200 || 
+            transactionStatus === 'SUCCESS' ||
+            status === '0' || resultCode === '0' || // Some providers use 0 for success
+            status === '1' || resultCode === '1' || // Some providers use 1 for success
+            transactionStatus === 'COMPLETED' || // Add this for PesaFlux
+            status.toUpperCase() === 'COMPLETED'; // Case-insensitive check for "Completed"
+        
+        console.log('✅ Success check result:', isSuccess);
+        
+        if (isSuccess) {
+          console.log('🎉 Payment confirmed via PesaFlux for product:', selectedProduct?.title || activeProduct?.title);
           
-          // Show download link for "Unlocking the Primal Brain"
-          if (productTitle === 'Unlocking the Primal Brain') {
-            const url = DOWNLOAD_LINKS['Unlocking the Primal Brain'];
+          const productTitle = selectedProduct?.title || activeProduct?.title || '';
+          const expectedAmount = selectedProduct?.price || activeProduct?.price || 0;
+          const actualAmount = Number((statusResult as any).amount) || Number((statusResult as any).TransactionAmount) || 0;
+          
+          console.log('💰 Amount comparison:', { 
+            expectedAmount, 
+            actualAmount, 
+            productTitle,
+            rawAmount: (statusResult as any).amount,
+            rawTransactionAmount: (statusResult as any).TransactionAmount
+          });
+          
+          // Check if the amount matches the expected amount for the product
+          // Allow for small differences due to type conversion
+          if (Math.abs(actualAmount - expectedAmount) > 0.01) {
+            console.log('⚠️ Amount mismatch! Expected:', expectedAmount, 'Actual:', actualAmount);
+            Alert.alert('Amount Mismatch', `Payment amount (KSH ${actualAmount}) doesn't match expected amount (KSH ${expectedAmount}) for ${productTitle}`);
+            return false;
+          }
+          
+          // Log ALL successful transactions to Google Sheet (not just Confidence Map)
+          try {
+            console.log('📝 Attempting to log transaction to Google Sheet for product:', productTitle);
+            googleSheetWriter.logSuccessfulTransaction({
+              transactionId: (statusResult as any).transactionId || pendingTransactionId || 'unknown',
+              amount: (statusResult as any).amount || expectedAmount.toString() || 'unknown',
+              phoneNumber: phoneNumber || 'unknown',
+              product: productTitle,
+              status: 'CONFIRMED',
+              receipt: (statusResult as any).transactionReceipt || (statusResult as any).receipt || 'unknown'
+            }).then(() => {
+              console.log('✅ Successfully logged transaction to Google Sheet');
+            }).catch(error => {
+              console.error('❌ Error logging transaction to Google Sheet:', error);
+            });
+          } catch (error) {
+            console.error('❌ Error setting up Google Sheet logging:', error);
+          }
+          
+          // Special handling for "The Confidence Map" - automatic download with IP tracking
+          if (productTitle === 'The Confidence Map') {
+            try {
+              // Get user's IP address
+              const ipInfo = await ipService.getDetailedIPInfo();
+              console.log('📍 User IP Info:', ipInfo);
+              
+              // Log the successful purchase with IP and phone number
+              console.log('✅ Confidence Map purchase confirmed:', {
+                product: productTitle,
+                phoneNumber: phoneNumber,
+                ipAddress: ipInfo.ip,
+                location: `${ipInfo.city}, ${ipInfo.region}, ${ipInfo.country}`,
+                transactionId: (statusResult as any).transactionId || 'unknown',
+                amount: (statusResult as any).amount || 'unknown',
+                receipt: (statusResult as any).transactionReceipt || 'unknown'
+              });
+              
+              // Log transaction to Google Sheet
+              try {
+                console.log('📝 Attempting to log Confidence Map transaction to Google Sheet');
+                await googleSheetWriter.logSuccessfulTransaction({
+                  transactionId: (statusResult as any).transactionId || pendingTransactionId || 'unknown',
+                  amount: (statusResult as any).amount || expectedAmount.toString() || 'unknown',
+                  phoneNumber: phoneNumber || 'unknown',
+                  product: productTitle,
+                  status: 'CONFIRMED',
+                  receipt: (statusResult as any).transactionReceipt || (statusResult as any).receipt || 'unknown'
+                });
+                console.log('✅ Successfully logged Confidence Map transaction to Google Sheet');
+              } catch (error) {
+                console.error('❌ Error directly logging Confidence Map to Google Sheet:', error);
+              }
+              
+              // Set download link and automatically trigger download
+              const url = DOWNLOAD_LINKS[productTitle];
+              console.log('🔗 Download URL for The Confidence Map:', url);
+              
+              if (url) {
+                setDownloadLink(url);
+                console.log('📥 Download link set for The Confidence Map');
+                
+                // Automatically open the download link
+                 console.log('🚀 Attempting to open download link automatically...');
+                 
+                 // Try to open the URL immediately
+                 Linking.canOpenURL(url).then((supported) => {
+                   console.log('🔗 Can open URL:', supported);
+                   if (supported) {
+                     return Linking.openURL(url);
+                   } else {
+                     console.log('❌ URL not supported, trying alternative approach');
+                     // Try alternative URL format
+                     const alternativeUrl = url.replace('drive.google.com/uc?export=download', 'drive.google.com/file/d') + '/view?usp=sharing';
+                     console.log('🔗 Trying alternative URL:', alternativeUrl);
+                     return Linking.openURL(alternativeUrl);
+                   }
+                 }).then(() => {
+                   console.log('✅ Download link opened successfully');
+                 }).catch((error) => {
+                   console.error('❌ Error opening download link:', error);
+                   // Try one more time with a different approach
+                setTimeout(() => {
+                     console.log('🔄 Retrying download link...');
+                     Linking.openURL(url).catch((retryError) => {
+                       console.error('❌ Retry failed:', retryError);
+                     });
+                   }, 2000);
+                 });
+                
+                Alert.alert(
+                  'Purchase Successful! 🎉', 
+                  `Your download is starting automatically.\n\nPurchase Details:\n• Product: ${productTitle}\n• Phone: ${phoneNumber}\n• Amount: KSH ${(statusResult as any).amount || 'unknown'}\n• Receipt: ${(statusResult as any).transactionReceipt || 'unknown'}\n• IP: ${ipInfo.ip}\n• Location: ${ipInfo.city || 'Unknown'}, ${ipInfo.country || 'Unknown'}`,
+                  [{ text: 'OK' }]
+                );
+              }
+            } catch (error) {
+              console.error('Error handling Confidence Map download:', error);
+              // Fallback to normal download link display
+              const url = DOWNLOAD_LINKS[productTitle];
+              if (url) {
+                setDownloadLink(url);
+                console.log('📥 Download link set for The Confidence Map (fallback)');
+              }
+            }
+          }
+          // Show download link for other products with downloads
+          else if (productTitle === 'Unlocking the Primal Brain') {
+            const url = DOWNLOAD_LINKS[productTitle];
             if (url) {
               setDownloadLink(url);
-              console.log('📥 Download link set for Unlocking the Primal Brain');
+              console.log(`📥 Download link set for ${productTitle}`);
+               
+               // Automatically open the download link
+               console.log('🚀 Attempting to open download link automatically...');
+               Linking.openURL(url).then(() => {
+                 console.log('✅ Download link opened successfully');
+               }).catch((error) => {
+                 console.error('❌ Error opening download link:', error);
+               });
             }
           } else {
-            Alert.alert('Payment Confirmed', 'Payment confirmed successfully.');
+            Alert.alert('Payment Confirmed', `Payment confirmed successfully.\n\nReceipt: ${(statusResult as any).transactionReceipt || 'unknown'}\nAmount: KSH ${(statusResult as any).amount || 'unknown'}`);
           }
+          
+          // Stop auto-checking since payment is confirmed
+          stopAutoCheck();
+          return true; // Return true to indicate successful confirmation
         } else {
-          console.log('⏳ Transaction found but not confirmed yet. Status:', transaction.status);
-          Alert.alert('Payment Pending', `Transaction found but status is: ${transaction.status}. Please wait for confirmation.`);
+          console.log('⏳ Payment found but not confirmed yet. Status:', status);
+          if (!isAutoChecking) {
+            Alert.alert('Payment Pending', `Payment found but status is: ${status}. Please wait for confirmation.`);
+          }
+          return false; // Return false to indicate not yet confirmed
         }
       } else {
-        console.log('❌ Transaction not found in Google Sheet or error occurred:', statusResult);
-        Alert.alert('Not Found', 'Transaction not found in our records. Please ensure payment was completed and try again.');
+        console.log('❌ Transaction not found or failed:', statusResult.message);
+        if (!isAutoChecking) {
+          Alert.alert('Payment Not Found', `No payment found for this transaction. ${statusResult.message || 'Please ensure payment was completed and try again.'}`);
+        }
+        return false; // Return false to indicate not found
       }
     } catch (err) {
       console.error('❌ Status check error:', err);
-      Alert.alert('Error', 'Failed to check payment status. Please try again.');
+      if (!isAutoChecking) {
+        Alert.alert('Error', 'Failed to check payment status. Please try again.');
+      }
+      return false; // Return false to indicate error
     } finally {
       setIsChecking(false);
     }
   };
 
+  // Function to start automatic payment checking
+  const startAutoCheck = () => {
+    if (autoCheckInterval) {
+      clearInterval(autoCheckInterval);
+    }
+    
+    setIsAutoChecking(true);
+    console.log('🔄 Starting automatic payment check every 5 seconds...');
+    
+    const interval = setInterval(async () => {
+      console.log('🔄 Auto-checking payment status...');
+      const isConfirmed = await handleCheckPaymentStatus();
+      
+      if (isConfirmed) {
+        console.log('✅ Payment confirmed via auto-check, stopping auto-check');
+        stopAutoCheck();
+      }
+    }, 5000); // Check every 5 seconds
+    
+    setAutoCheckInterval(interval);
+  };
+
+  // Background payment detection that runs independently of the modal - DISABLED
+  const checkForRecentPayments = async () => {
+    // This function is now disabled - transactions will be pushed directly when confirmed
+    console.log('⏸️ Google Sheet polling disabled - transactions will be pushed when confirmed');
+    return;
+  };
+
+  // Handle successful payment detection
+  const handleSuccessfulPayment = async (paymentResult: any, productTitle: string) => {
+    console.log('🎉 Payment confirmed for product:', productTitle);
+    console.log('📊 Payment result:', paymentResult);
+    
+    // Extract transaction details (works with both PesaFlux API and Google Sheet data)
+    const transactionId = (paymentResult as any).transactionId || (paymentResult as any).transaction?.transaction_id || 'unknown';
+    const amount = (paymentResult as any).amount || (paymentResult as any).transaction?.amount || 'unknown';
+    const receipt = (paymentResult as any).transactionReceipt || (paymentResult as any).receipt || (paymentResult as any).transaction?.receipt || 'unknown';
+    const phoneNumber = paymentResult.phoneNumber || lastPaymentAttempt?.phoneNumber || 'unknown';
+    
+    // Log successful transaction to Google Sheet
+    try {
+      console.log('📊 Logging transaction to Google Sheet with:', {
+        transactionId, amount, phoneNumber, productTitle, receipt
+      });
+      
+      // Call logSuccessfulTransaction with an object containing all parameters
+      await googleSheetWriter.logSuccessfulTransaction({
+        transactionId,
+        amount,
+        phoneNumber,
+        product: productTitle,
+        status: 'CONFIRMED',
+        receipt
+      });
+      console.log('✅ Successfully logged transaction to Google Sheet');
+    } catch (error) {
+      console.error('❌ Error logging to Google Sheet:', error);
+    }
+    
+    // Special handling for "The Confidence Map" - automatic download with IP tracking
+    if (productTitle === 'The Confidence Map') {
+      try {
+        // Get user's IP address
+        const ipInfo = await ipService.getDetailedIPInfo();
+        console.log('📍 User IP Info:', ipInfo);
+        
+        // Log the successful purchase with IP and phone number
+        console.log('✅ Confidence Map purchase confirmed:', {
+          product: productTitle,
+          phoneNumber: phoneNumber,
+          ipAddress: ipInfo.ip,
+          location: `${ipInfo.city}, ${ipInfo.region}, ${ipInfo.country}`,
+          transactionId: transactionId,
+          amount: amount,
+          receipt: receipt,
+          source: paymentResult.transaction ? 'Google Sheet' : 'PesaFlux API'
+        });
+        
+        // Set download link and automatically trigger download
+        const url = DOWNLOAD_LINKS[productTitle];
+        if (url) {
+          setDownloadLink(url);
+          console.log('📥 Download link set for The Confidence Map');
+          
+          // Automatically open the download link
+          console.log('🚀 Attempting to open download link automatically...');
+          setTimeout(() => {
+            Linking.openURL(url).then(() => {
+              console.log('✅ Download link opened successfully');
+            }).catch((error) => {
+              console.error('❌ Error opening download link:', error);
+            });
+          }, 1000);
+          
+          Alert.alert(
+            'Purchase Successful! 🎉', 
+            `Your download is starting automatically.\n\nPurchase Details:\n• Product: ${productTitle}\n• Phone: ${phoneNumber}\n• Amount: KSH ${amount}\n• Receipt: ${receipt}\n• IP: ${ipInfo.ip}\n• Location: ${ipInfo.city || 'Unknown'}, ${ipInfo.country || 'Unknown'}\n• Source: ${paymentResult.transaction ? 'Google Sheet' : 'PesaFlux API'}`,
+            [{ text: 'OK' }]
+          );
+        }
+      } catch (error) {
+        console.error('Error handling Confidence Map download:', error);
+        // Fallback to normal download link display
+        const url = DOWNLOAD_LINKS[productTitle];
+        if (url) {
+          setDownloadLink(url);
+          console.log('📥 Download link set for The Confidence Map (fallback)');
+        }
+      }
+    }
+    // Show download link for other products with downloads
+    else if (productTitle === 'Unlocking the Primal Brain') {
+      const url = DOWNLOAD_LINKS[productTitle];
+      if (url) {
+        setDownloadLink(url);
+        console.log(`📥 Download link set for ${productTitle}`);
+      }
+    } else {
+      Alert.alert('Payment Confirmed', `Payment confirmed successfully.\n\nReceipt: ${receipt}\nAmount: KSH ${amount}`);
+    }
+    
+    // Stop auto-checking and clear payment attempt
+    stopAutoCheck();
+    setLastPaymentAttempt(null);
+    setPendingTransactionId(null);
+  };
+
+  // Function to stop automatic payment checking
+  const stopAutoCheck = () => {
+    if (autoCheckInterval) {
+      clearInterval(autoCheckInterval);
+      setAutoCheckInterval(null);
+    }
+    setIsAutoChecking(false);
+    console.log('🛑 Stopped automatic payment checking');
+  };
+
+    
+
+  // Background payment detection interval - DISABLED to prevent pulling from Google Sheet
+  useEffect(() => {
+    let backgroundInterval: number | null = null;
+    
+    // Background checking is now disabled - only push transactions when confirmed
+    console.log('⏸️ Background payment detection disabled - will only push transactions when confirmed');
+    
+    // Cleanup on unmount
+    return () => {
+      if (autoCheckInterval) {
+        clearInterval(autoCheckInterval);
+      }
+      if (backgroundInterval) {
+        clearInterval(backgroundInterval);
+      }
+    };
+  }, [lastPaymentAttempt, autoCheckInterval]);
+
+
+
+
+
   return (
     <>
       <ScrollView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Books</Text>
-        </View>
+                 {/* Header */}
+         <View style={styles.header}>
+           <Text style={styles.headerTitle}>Books</Text>
+         </View>
         
         {/* Products Section */}
         <View style={styles.bookSection}>
@@ -205,7 +560,7 @@ export default function NewsletterVideosPage() {
               onPress={() => {
                 setActiveProduct({
                   title: 'The Confidence Map',
-                  price: 250,
+                  price: 1,
                   originalPrice: 500,
                   image: require('../assets/icons/The Confidence Map.png'),
                   description:
@@ -227,14 +582,14 @@ export default function NewsletterVideosPage() {
                   <View style={styles.priceContainer}>
                     <Text style={styles.originalPrice}>was kes 500</Text>
                     <Text style={styles.discountPrice}> and now ksh </Text>
-                    <Text style={styles.finalPrice}>250</Text>
+                    <Text style={styles.finalPrice}>1</Text>
                   </View>
                   <TouchableOpacity 
                     style={styles.buyButton}
                     onPress={() => {
                       setActiveProduct({
                         title: 'The Confidence Map',
-                        price: 250,
+                        price: 1,
                         originalPrice: 500,
                         image: require('../assets/icons/The Confidence Map.png'),
                         description:
@@ -261,7 +616,7 @@ export default function NewsletterVideosPage() {
                   title: 'The Power Within',
                   price: 500,
                   originalPrice: 1200,
-                  image: require('../assets/icons/The power within.png'),
+                  image: require('../assets/icons/The Power Within.png'),
                   description:
                     'The Power Within: The Secret Behind Emotions You Didn’t Know unravels the hidden origins of emotions and how they continue to shape our lives today. Emotions evolved as powerful mechanisms to help us navigate challenges, make decisions, and survive. This book shows how understanding these roots gives you greater control over your life and growth.'
                 });
@@ -271,7 +626,7 @@ export default function NewsletterVideosPage() {
               <View style={styles.bookContainer}>
                 <View style={styles.bookImageContainer}>
                   <Image 
-                    source={require('../assets/icons/The power within.png')}
+                    source={require('../assets/icons/The Power Within.png')}
                     style={styles.bookImage}
                     resizeMode="contain"
                   />
@@ -290,7 +645,7 @@ export default function NewsletterVideosPage() {
                         title: 'The Power Within',
                         price: 500,
                         originalPrice: 1200,
-                        image: require('../assets/icons/The power within.png'),
+                        image: require('../assets/icons/The Power Within.png'),
                         description:
                           'The Power Within: The Secret Behind Emotions You Didn’t Know unravels the hidden origins of emotions and how they continue to shape our lives today. Emotions evolved as powerful mechanisms to help us navigate challenges, make decisions, and survive. This book shows how understanding these roots gives you greater control over your life and growth.'
                       });
@@ -416,27 +771,32 @@ export default function NewsletterVideosPage() {
               </TouchableOpacity>
             </View>
 
-            {/* Status Check Button */}
-            <View style={[styles.modalButtons, { marginTop: 12 }]}>
-              {downloadLink ? (
-                <TouchableOpacity 
-                  style={[styles.modalButton, { backgroundColor: '#0d6efd' }]}
-                  onPress={() => Linking.openURL(downloadLink)}
-                >
-                  <Text style={[styles.confirmButtonText, { color: '#FFFFFF' }]}>Open Download</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity 
-                  style={[styles.modalButton, { backgroundColor: pendingTransactionId ? '#0d6efd' : '#CCCCCC' }]}
-                  onPress={handleCheckPaymentStatus}
-                  disabled={!pendingTransactionId || isChecking}
-                >
-                  <Text style={[styles.confirmButtonText, { color: '#FFFFFF' }]}>
-                    {isChecking ? 'Checking...' : 'Check Payment Status'}
-                  </Text>
-                </TouchableOpacity>
+                         {/* Status Check Button */}
+             <View style={[styles.modalButtons, { marginTop: 12 }]}>
+                 <TouchableOpacity 
+                   style={[styles.modalButton, { backgroundColor: pendingTransactionId ? '#0d6efd' : '#CCCCCC' }]}
+                   onPress={handleCheckPaymentStatus}
+                   disabled={!pendingTransactionId || isChecking || isAutoChecking}
+                 >
+                   <Text style={[styles.confirmButtonText, { color: '#FFFFFF' }]}>
+                     {isChecking ? 'Checking...' : isAutoChecking ? 'Auto-Checking...' : 'Check Payment Status'}
+                   </Text>
+                 </TouchableOpacity>
+             </View>
+              
+              
+
+             
+
+                           {/* Auto-Checking Status */}
+              {isAutoChecking && (
+                <View style={styles.autoCheckingContainer}>
+                  <Text style={styles.autoCheckingText}>🔄 Automatically checking payment status...</Text>
+                  <Text style={styles.autoCheckingSubtext}>Please wait while we verify your payment</Text>
+                </View>
               )}
-            </View>
+
+                             
 
             {/* Processing Indicator */}
             {isProcessing && (
@@ -729,8 +1089,48 @@ const styles = StyleSheet.create({
     color: '#00A651',
     marginBottom: 4,
   },
-  processingSubtext: {
-    fontSize: 14,
-    color: '#666',
-  },
-});
+     processingSubtext: {
+     fontSize: 14,
+     color: '#666',
+   },
+   autoCheckingContainer: {
+     alignItems: 'center',
+     marginTop: 16,
+     padding: 16,
+     backgroundColor: '#E3F2FD',
+     borderRadius: 8,
+     borderWidth: 1,
+     borderColor: '#2196F3',
+   },
+   autoCheckingText: {
+     fontSize: 16,
+     fontFamily: 'PublicSans_700Bold',
+     color: '#1976D2',
+     marginBottom: 4,
+   },
+       autoCheckingSubtext: {
+      fontSize: 14,
+      color: '#666',
+    },
+    backgroundPaymentStatus: {
+      marginTop: 16,
+      padding: 12,
+      backgroundColor: '#FFF3CD',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#FFEAA7',
+    },
+    backgroundPaymentText: {
+      fontSize: 14,
+      fontFamily: 'PublicSans_700Bold',
+      color: '#856404',
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+         backgroundPaymentSubtext: {
+       fontSize: 12,
+       color: '#856404',
+       textAlign: 'center',
+     },
+     
+  });

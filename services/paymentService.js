@@ -1,13 +1,14 @@
 import axios from 'axios';
 import { PAYMENT_PROVIDERS } from '../config/paymentProviders';
+import googleSheetWriter from './googleSheetWriter';
 
 class PaymentService {
-  async sendSTKPush(phoneNumber, amount, provider = 'pesaflux') {
+  async sendSTKPush(phoneNumber, amount, provider = 'pesaflux', productName = '') {
     switch(provider.toLowerCase()) {
       case 'daraja':
         return this.darajaPayment(phoneNumber, amount);
       case 'pesaflux':
-        return this.pesafluxPayment(phoneNumber, amount);
+        return this.pesafluxPayment(phoneNumber, amount, productName);
       default:
         throw new Error('Payment provider not supported');
     }
@@ -18,7 +19,7 @@ class PaymentService {
     throw new Error('Daraja implementation not available');
   }
 
-  async pesafluxPayment(phoneNumber, amount) {
+  async pesafluxPayment(phoneNumber, amount, productName = '') {
     try {
       console.log('📞 Phone Number:', phoneNumber);
       console.log('💰 Amount:', amount);
@@ -65,13 +66,28 @@ class PaymentService {
         
         // Handle success response format
         if (response.data && response.data.success === "200") {
-          return {
+          const result = {
             success: true,
             message: response.data.massage || 'Request sent successfully',
             transactionId: response.data.transaction_request_id,
             provider: 'pesaflux',
             response: response.data,
           };
+          
+          // Log the payment initiation to Google Sheet
+          try {
+            await googleSheetWriter.logSuccessfulTransaction({
+              transactionId: response.data.transaction_request_id,
+              amount: amount,
+              msisdn: formattedPhone,
+              product: productName || 'Payment Initiated',
+              status: 'CONFIRMED'
+            });
+          } catch (error) {
+            console.error('❌ Error logging payment initiation:', error);
+          }
+          
+          return result;
         }
 
         return {
@@ -161,7 +177,23 @@ class PaymentService {
         console.log('✅ Status Response:', response.data);
         
         // Handle transaction status response format
-        if (response.data && response.data.ResultCode === "200") {
+        if (response.data && (response.data.ResultCode === "200" || response.data.ResultCode === 200)) {
+          return {
+            success: true,
+            transactionId: response.data.TransactionID,
+            status: response.data.TransactionStatus,
+            transactionCode: response.data.TransactionCode,
+            transactionReceipt: response.data.TransactionReceipt,
+            amount: response.data.TransactionAmount,
+            msisdn: response.data.Msisdn,
+            transactionDate: response.data.TransactionDate,
+            transactionReference: response.data.TransactionReference,
+            response: response.data,
+          };
+        }
+        
+        // Also check for successful transactions with different response formats
+        if (response.data && response.data.TransactionStatus === "SUCCESS") {
           return {
             success: true,
             transactionId: response.data.TransactionID,

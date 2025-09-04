@@ -14,7 +14,12 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="hello_conscious_one" options={{ headerShown: false }} />
         <Stack.Screen name="tokens" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+        <Stack.Screen name="books" options={{ headerShown: false }} />
+        <Stack.Screen name="catalog" options={{ headerShown: false }} />
+        <Stack.Screen name="unlocking-primal-brain" options={{ headerShown: false }} />
+        <Stack.Screen name="no-more-confusion" options={{ headerShown: false }} />
+        <Stack.Screen name="the-power-within" options={{ headerShown: false }} />
+        <Stack.Screen name="the-confidence-map" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

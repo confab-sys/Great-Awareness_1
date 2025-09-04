@@ -19,14 +19,22 @@ function doPost(e) {
     
     sheet.appendRow(row);
     
+    // Create response with CORS headers
     return ContentService
-      .createTextOutput(JSON.stringify({ success: true, message: 'Data logged successfully' }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .createTextOutput(JSON.stringify({ success: true, message: 'Transaction logged successfully' }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
       
   } catch (error) {
+    // Error response with CORS headers
     return ContentService
       .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
   }
 }
 
