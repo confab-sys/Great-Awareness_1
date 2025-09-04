@@ -16,6 +16,8 @@ export type SheetTransactionResponse = {
   };
   message?: string;
   error?: string;
+  downloadUrl?: string;
+  expiresAt?: string;
 };
 
 class SheetStatusService {

@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ArrowBackLeftIcon from '../assets/icons/arrow back left.svg';
 import paymentService from '../services/paymentService';
+import sheetStatusService from '../services/sheetStatusService';
 
 import BlankStarIcon from '../assets/icons/blank star.svg';
 import FullStarIcon from '../assets/icons/full star.svg';
@@ -16,6 +17,7 @@ export default function UnlockingPrimalBrainPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingTransactionId, setPendingTransactionId] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState(null);
 
   const handlePurchase = () => {
     setPaymentModalVisible(true);
@@ -35,7 +37,7 @@ export default function UnlockingPrimalBrainPage() {
       const result = await paymentService.sendSTKPush(phoneNumber, amount, 'pesaflux', productTitle);
       
       if (result && result.success) {
-        if (result.transactionId) {
+        if ('transactionId' in result && result.transactionId) {
           setPendingTransactionId(result.transactionId);
         }
         
@@ -57,26 +59,61 @@ export default function UnlockingPrimalBrainPage() {
   
   const handleCheckPaymentStatus = async () => {
     if (!pendingTransactionId) {
-      Alert.alert('No Transaction', 'There is no pending transaction to check.');
+      Alert.alert('No Transaction', 'No pending transaction to check');
       return;
     }
     
     setIsChecking(true);
     try {
-      const statusResult = await paymentService.checkTransactionStatus(pendingTransactionId);
+      const status = await sheetStatusService.checkTransactionStatus(pendingTransactionId);
       
-      if (statusResult.success) {
-        Alert.alert('Payment Successful', 'Thank you for your purchase!');
+      if (status && status.success) {
+        if (status.downloadUrl) {
+          setDownloadUrl(status.downloadUrl as SetStateAction<null>);
+          Alert.alert(
+            'Payment Successful!', 
+            'Your download is ready. Click Download to get your PDF.',
+            [
+              { 
+                text: 'Download Now', 
+                onPress: () => handleDownload(status.downloadUrl)
+              },
+              { text: 'Later' }
+            ]
+          );
+        } else {
+          Alert.alert('Payment Confirmed', 'Your payment was successful! The download link will be available shortly.');
+        }
         setPaymentModalVisible(false);
+      } else if (status && status.status === 'PENDING') {
+        Alert.alert('Payment Pending', 'Your payment is still being processed. Please check again in a moment.');
       } else {
-        Alert.alert('Payment Pending', 'Your payment is still being processed. Please try checking again.');
+        Alert.alert('Payment Not Found', 'We couldn\'t find your payment. If you completed the payment, please try checking again in a few moments.');
       }
     } catch (error) {
+      console.error('Check status error:', error);
       Alert.alert('Error', 'Failed to check payment status. Please try again.');
     } finally {
       setIsChecking(false);
     }
   };
+  
+  const handleDownload = async (url) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open download URL');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      Alert.alert('Error', 'Failed to open download link');
+    }
+  };
+  
+  // The handleCheckPaymentStatus function is already defined above
   
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -89,7 +126,7 @@ export default function UnlockingPrimalBrainPage() {
       
       <TouchableOpacity 
         style={styles.heartButton}
-        onPress={() => router.push('/favorites')}
+        onPress={() => router.push('/(tabs)/favorites' as any)}
       >
         <HeartCircleIcon width={24} height={24} />
       </TouchableOpacity>
@@ -177,6 +214,17 @@ export default function UnlockingPrimalBrainPage() {
                 >
                   <Text style={styles.paymentOptionText}>
                     {isChecking ? 'Checking...' : 'Check Payment Status'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              
+              {downloadUrl && (
+                <TouchableOpacity 
+                  style={styles.downloadButton}
+                  onPress={() => handleDownload(downloadUrl)}
+                >
+                  <Text style={styles.paymentOptionText}>
+                    Download PDF
                   </Text>
                 </TouchableOpacity>
               )}

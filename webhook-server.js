@@ -5,6 +5,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
+const supabaseService = require('../services/supabaseService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,7 +32,7 @@ const PRODUCT_AMOUNTS = {
 
 const DOWNLOAD_LINKS = {
     'The Confidence Map': 'https://drive.usercontent.google.com/download?id=1m8VHhQzvVBhzIKMfFQRFQwvKRoO9Xtr4&export=download&authuser=0',
-    'Unlocking the Primal Brain': 'https://drive.google.com/file/d/1_wIIkiGz6yDPdMupfqUmTbM2cYm_u7AJ/view?usp=drive_link'
+    'Unlocking the Primal Brain': 'supabase' // This will use Supabase for secure file delivery
 };
 
 // Google Sheet logging function
@@ -110,10 +111,35 @@ app.post('/webhook', async (req, res) => {
             // Handle automatic downloads
             const downloadLink = DOWNLOAD_LINKS[productName];
             let downloadTriggered = false;
+            let downloadUrl = null;
 
-            if (downloadLink && productName === 'The Confidence Map') {
+            if (productName === 'Unlocking the Primal Brain') {
+                console.log('🎉 Triggering Supabase download for Unlocking the Primal Brain');
+                
+                try {
+                    // Record the purchase in Supabase
+                    await supabaseService.recordPurchase({
+                        bookId: productName,
+                        transactionId: transactionId,
+                        amount: amount,
+                        phoneNumber: phone,
+                        receipt: receipt
+                    });
+                    
+                    // Generate a temporary download URL that expires
+                    downloadUrl = await supabaseService.generateTempDownloadUrl(productName);
+                    
+                    if (downloadUrl) {
+                        downloadTriggered = true;
+                        console.log('✅ Supabase download URL generated successfully');
+                    }
+                } catch (error) {
+                    console.error('❌ Error generating Supabase download:', error);
+                }
+            } else if (downloadLink && productName === 'The Confidence Map') {
                 console.log('🎉 Triggering automatic download for The Confidence Map');
                 downloadTriggered = true;
+                downloadUrl = downloadLink;
                 
                 // Here you could send email/SMS with download link
                 // or trigger any other post-purchase actions
@@ -124,6 +150,7 @@ app.post('/webhook', async (req, res) => {
                 message: `Payment successful for ${productName}`,
                 productName,
                 downloadTriggered,
+                downloadUrl,
                 transactionId
             });
 

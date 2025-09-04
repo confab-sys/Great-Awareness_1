@@ -19,10 +19,12 @@ export interface WebhookResponse {
   downloadInfo?: any;
 }
 
+import supabaseService from './supabaseService';
+
 class WebhookService {
   private DOWNLOAD_LINKS: Record<string, string> = {
     'The Confidence Map': 'https://drive.usercontent.google.com/download?id=1m8VHhQzvVBhzIKMfFQRFQwvKRoO9Xtr4&export=download&authuser=0',
-    'Unlocking the Primal Brain': 'https://drive.google.com/file/d/1_wIIkiGz6yDPdMupfqUmTbM2cYm_u7AJ/view?usp=drive_link',
+    'Unlocking the Primal Brain': 'supabase', // This will use Supabase for secure file delivery
   };
 
   private PRODUCT_AMOUNTS: Record<string, number> = {
@@ -55,9 +57,20 @@ class WebhookService {
       console.log('✅ Payment successful for product:', productName);
       this.logSuccessfulPurchase(webhookData, productName);
 
-      const downloadLink = this.DOWNLOAD_LINKS[productName];
-      
-      if (downloadLink && productName === 'The Confidence Map') {
+      // Handle download link generation based on product
+      if (productName === 'Unlocking the Primal Brain') {
+        // Use Supabase for secure file delivery
+        const downloadInfo = await this.triggerSupabaseDownload(webhookData, productName);
+        return {
+          success: true,
+          message: `Payment successful for ${productName}`,
+          downloadTriggered: true,
+          productName: productName,
+          downloadInfo: downloadInfo
+        };
+      } else if (productName === 'The Confidence Map') {
+        // Use existing Google Drive link
+        const downloadLink = this.DOWNLOAD_LINKS[productName];
         const downloadInfo = await this.triggerAutomaticDownload(downloadLink, webhookData, productName);
         return {
           success: true,
@@ -102,6 +115,54 @@ class WebhookService {
     console.log('   Receipt:', webhookData.TransactionReceipt);
   }
 
+  /**
+   * Trigger download from Supabase for secure file delivery
+   */
+  private async triggerSupabaseDownload(webhookData: PaymentWebhook, productName: string) {
+    try {
+      console.log('🚀 Triggering Supabase download for:', productName);
+      
+      // Record the purchase in Supabase
+      await supabaseService.recordPurchase({
+        bookId: productName,
+        transactionId: webhookData.TransactionID,
+        amount: webhookData.TransactionAmount,
+        phoneNumber: webhookData.Msisdn,
+        receipt: webhookData.TransactionReceipt
+      });
+      
+      // Generate a temporary download URL that expires
+      const downloadUrl = await supabaseService.generateTempDownloadUrl(productName);
+      
+      if (!downloadUrl) {
+        throw new Error('Failed to generate download URL');
+      }
+      
+      // Create download info object for client
+      const downloadInfo = {
+        productName: productName,
+        downloadLink: downloadUrl,
+        transactionId: webhookData.TransactionID,
+        phoneNumber: webhookData.Msisdn,
+        amount: webhookData.TransactionAmount,
+        receipt: webhookData.TransactionReceipt,
+        timestamp: Date.now(),
+        expiresIn: '24 hours'
+      };
+      
+      console.log('💾 Supabase download info stored:', downloadInfo);
+      console.log('✅ Supabase download triggered successfully');
+      
+      return downloadInfo;
+    } catch (error) {
+      console.error('❌ Error triggering Supabase download:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Trigger download from direct URL (e.g., Google Drive)
+   */
   private async triggerAutomaticDownload(downloadLink: string, webhookData: PaymentWebhook, productName: string) {
     try {
       console.log('🚀 Triggering automatic download for:', productName);
@@ -126,11 +187,6 @@ class WebhookService {
       // Trigger download by opening the URL
       // For server-side, we can send a response that the client can use
       console.log('✅ Automatic download triggered successfully');
-      
-      // You can also implement additional actions here:
-      // - Send SMS with download link
-      // - Send email with download link
-      // - Update database with purchase record
       
       return downloadInfo;
     } catch (error) {

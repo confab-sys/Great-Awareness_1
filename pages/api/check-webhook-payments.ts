@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 // In-memory storage for recent webhook payments (in production, use a database)
 let recentWebhookPayments: any[] = [];
