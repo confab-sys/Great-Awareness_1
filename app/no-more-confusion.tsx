@@ -95,7 +95,7 @@ export default function UnlockingPrimalBrainPage() {
       </TouchableOpacity>
       
       <Image 
-        source={require('../assets/icons/No more confusion.png')} 
+        source={require('../assets/icons/No More Confusion.png')} 
         style={styles.centerIcon} 
       />
       

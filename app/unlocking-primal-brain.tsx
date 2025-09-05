@@ -132,7 +132,7 @@ export default function UnlockingPrimalBrainPage() {
       </TouchableOpacity>
       
       <Image 
-        source={require('../assets/icons/unlocking the primal brain.png')} 
+        source={require('../assets/icons/Unlocking the Primal Brain.png')} 
         style={styles.centerIcon} 
       />
       

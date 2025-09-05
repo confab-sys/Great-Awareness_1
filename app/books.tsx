@@ -10,8 +10,8 @@ export default function BooksPage() {
   const router = useRouter();
 
   const allBooks = [
-    { name: 'Unlocking the Primal Brain', source: require('../assets/icons/unlocking the primal brain.png'), category: 'Best selling' },
-    { name: 'No More Confusion', source: require('../assets/icons/No more confusion.png'), category: 'Best selling' },
+    { name: 'Unlocking the Primal Brain', source: require('../assets/icons/Unlocking the Primal Brain.png'), category: 'Best selling' },
+    { name: 'No More Confusion', source: require('../assets/icons/No More Confusion.png'), category: 'Best selling' },
     { name: 'The Power Within', source: require('../assets/icons/The Power Within.png'), category: 'Best selling' },
     { name: 'The Confidence Map', source: require('../assets/icons/The Confidence Map.png'), category: 'Best selling' },
     { name: 'The Secret Behind Romantic Love', source: require('../assets/icons/The Secret Behind Romantic Love.png'), category: 'Recommended for you' },
