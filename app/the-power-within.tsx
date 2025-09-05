@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ArrowBackLeftIcon from '../assets/icons/arrow back left.svg';
 import paymentService from '../services/paymentService';
+import supabaseService from '../services/supabaseService';
 
 import FullStarIcon from '../assets/icons/full star.svg';
 import HeartCircleIcon from '../assets/icons/heart-circle.svg';
@@ -94,7 +95,7 @@ export default function ThePowerWithinPage() {
       </TouchableOpacity>
       
       <Image 
-        source={require('../assets/icons/The Power Within.png')} 
+        source={{ uri: supabaseService.getBookCoverUrl('The Power Within.png') }} 
         style={styles.centerIcon} 
       />
       

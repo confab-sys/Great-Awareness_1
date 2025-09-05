@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ArrowBackLeftIcon from '../assets/icons/arrow back left.svg';
 import paymentService from '../services/paymentService';
+import supabaseService from '../services/supabaseService';
 
 import BlankStarIcon from '../assets/icons/blank star.svg';
 import FullStarIcon from '../assets/icons/full star.svg';
@@ -95,7 +96,7 @@ export default function UnlockingPrimalBrainPage() {
       </TouchableOpacity>
       
       <Image 
-        source={require('../assets/icons/No More Confusion.png')} 
+        source={{ uri: supabaseService.getBookCoverUrl('No More Confusion.png') }} 
         style={styles.centerIcon} 
       />
       
