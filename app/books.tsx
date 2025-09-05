@@ -226,7 +226,7 @@ const BookCoverImage = ({ source, style }) => {
       <Image
         source={{ uri: source }}
         style={[styles.bookImage, style, (loading || error) && styles.hiddenImage]}
-        resizeMode="cover"
+        resizeMode="contain"
         onLoad={() => setLoading(false)}
         onError={() => {
           setLoading(false);
@@ -379,10 +379,10 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   iconImage: {
-    width: 140,
-    height: 180,
+    width: 150,
+    height: 200,
     resizeMode: 'contain',
-    marginRight: -10,
-    borderRadius: 8,
+    marginRight: -5,
+    borderRadius: 10,
   },
 });
