@@ -15,7 +15,7 @@ export default function BooksPage() {
     { name: 'The Power Within', source: require('../assets/icons/The Power Within.png'), category: 'Best selling' },
     { name: 'The Confidence Map', source: require('../assets/icons/The Confidence Map.png'), category: 'Best selling' },
     { name: 'The Secret Behind Romantic Love', source: require('../assets/icons/The Secret Behind Romantic Love.png'), category: 'Recommended for you' },
-    { name: 'Master Your Finances', source: require('../assets/icons/Master your finances.png'), category: 'Recommended for you' },
+    { name: 'Master Your Finances', source: require('../assets/icons/MasterYourFinances.png'), category: 'Recommended for you' },
     { name: 'Breaking Free From Mastubation', source: require('../assets/icons/Breaking Free From Mastubation.png'), category: 'Recommended for you' },
     { name: 'The Woman', source: require('../assets/icons/The Woman.png'), category: 'Recommended for you' },
     { name: 'Resonance', source: require('../assets/icons/Resonance.png'), category: 'Recommended for you' },
