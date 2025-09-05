@@ -4,6 +4,7 @@ import { Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, 
 import ArrowBackLeftIcon from '../assets/icons/arrow back left.svg';
 import paymentService from '../services/paymentService';
 import sheetStatusService from '../services/sheetStatusService';
+import supabaseService from '../services/supabaseService';
 
 import BlankStarIcon from '../assets/icons/blank star.svg';
 import FullStarIcon from '../assets/icons/full star.svg';
@@ -132,7 +133,7 @@ export default function UnlockingPrimalBrainPage() {
       </TouchableOpacity>
       
       <Image 
-        source={require('../assets/icons/Unlocking the Primal Brain.png')} 
+        source={{ uri: supabaseService.getBookCoverUrl('Unlocking the Primal Brain.png') }} 
         style={styles.centerIcon} 
       />
       
