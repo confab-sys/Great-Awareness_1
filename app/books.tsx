@@ -1,24 +1,42 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useState, useEffect } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import BookSavedIcon from '../assets/icons/book-saved.svg';
 import SearchIcon from '../assets/icons/search-normal.svg';
 import TinyManIcon from '../assets/icons/tiny_main_logo.svg';
+import supabaseService from '../services/supabaseService';
 
 export default function BooksPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [bookCovers, setBookCovers] = useState({});
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  useEffect(() => {
+    const loadBookCovers = async () => {
+      try {
+        const covers = supabaseService.getAllBookCoverUrls();
+        setBookCovers(covers);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading book covers:', error);
+        setLoading(false);
+      }
+    };
+
+    loadBookCovers();
+  }, []);
+
   const allBooks = [
-    { name: 'Unlocking the Primal Brain', source: require('../assets/icons/Unlocking the Primal Brain.png'), category: 'Best selling' },
-    { name: 'No More Confusion', source: require('../assets/icons/No More Confusion.png'), category: 'Best selling' },
-    { name: 'The Power Within', source: require('../assets/icons/The Power Within.png'), category: 'Best selling' },
-    { name: 'The Confidence Map', source: require('../assets/icons/The Confidence Map.png'), category: 'Best selling' },
-    { name: 'The Secret Behind Romantic Love', source: require('../assets/icons/The Secret Behind Romantic Love.png'), category: 'Recommended for you' },
-    { name: 'Master Your Finances', source: require('../assets/icons/MasterYourFinances.png'), category: 'Recommended for you' },
-    { name: 'Breaking Free From Mastubation', source: require('../assets/icons/Breaking Free From Mastubation.png'), category: 'Recommended for you' },
-    { name: 'The Woman', source: require('../assets/icons/The Woman.png'), category: 'Recommended for you' },
-    { name: 'Resonance', source: require('../assets/icons/Resonance.png'), category: 'Recommended for you' },
+    { name: 'Unlocking the Primal Brain', imageName: 'Unlocking the Primal Brain.png', category: 'Best selling' },
+    { name: 'No More Confusion', imageName: 'No More Confusion.png', category: 'Best selling' },
+    { name: 'The Power Within', imageName: 'The Power Within.png', category: 'Best selling' },
+    { name: 'The Confidence Map', imageName: 'The Confidence Map.png', category: 'Best selling' },
+    { name: 'The Secret Behind Romantic Love', imageName: 'The Secret Behind Romantic Love.png', category: 'Recommended for you' },
+    { name: 'Master Your Finances', imageName: 'MasterYourFinances.png', category: 'Recommended for you' },
+    { name: 'Breaking Free From Mastubation', imageName: 'Breaking Free From Mastubation.png', category: 'Recommended for you' },
+    { name: 'The Woman', imageName: 'The Woman.png', category: 'Recommended for you' },
+    { name: 'Resonance', imageName: 'Resonance.png', category: 'Recommended for you' },
   ];
 
   const filteredBooks = searchQuery
@@ -32,13 +50,21 @@ export default function BooksPage() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={true}>
-      <View style={styles.header}>
-        <View style={styles.leftSection}>
-          <Text style={styles.title}>Great Awareness</Text>
-          <TinyManIcon width={30} height={30} />
+      {loading && (
+        <View style={styles.pageLoadingContainer}>
+          <ActivityIndicator size="large" color="#000000" />
+          <Text style={styles.pageLoadingText}>Loading books...</Text>
         </View>
-        <Text style={styles.digit}>100</Text>
-      </View>
+      )}
+      {!loading && (
+        <>
+          <View style={styles.header}>
+            <View style={styles.leftSection}>
+              <Text style={styles.title}>Great Awareness</Text>
+              <TinyManIcon width={30} height={30} />
+            </View>
+            <Text style={styles.digit}>100</Text>
+          </View>
       
       <View style={styles.booksSection}>
         <Text style={styles.booksTitle}>Books</Text>
@@ -88,8 +114,8 @@ export default function BooksPage() {
                       }
                     }}
                   >
-                    <Image
-                      source={book.source}
+                    <BookCoverImage
+                      source={bookCovers[book.name]}
                       style={styles.iconImage}
                     />
                   </TouchableOpacity>
@@ -128,8 +154,8 @@ export default function BooksPage() {
                       }
                     }}
                   >
-                    <Image
-                      source={book.source}
+                    <BookCoverImage
+                      source={bookCovers[book.name]}
                       style={styles.iconImage}
                     />
                   </TouchableOpacity>
@@ -155,8 +181,8 @@ export default function BooksPage() {
               {filteredBooks.length > 0 ? (
                 filteredBooks.map((book, index) => (
                   <TouchableOpacity key={`${book.name}-${index}`} onPress={() => console.log(`Clicked: ${book.name}`)}>
-                    <Image
-                      source={book.source}
+                    <BookCoverImage
+                      source={bookCovers[book.name]}
                       style={styles.iconImage}
                     />
                   </TouchableOpacity>
@@ -167,9 +193,49 @@ export default function BooksPage() {
             </View>
           </ScrollView>
         </View>
+        </>
+      )}
     </ScrollView>
   );
 }
+
+const BookCoverImage = ({ source, style }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  if (!source) {
+    return (
+      <View style={[style, styles.placeholderContainer]}>
+        <Text style={styles.placeholderText}>No Image</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[style, styles.imageContainer]}>
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#0000ff" />
+        </View>
+      )}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load image</Text>
+        </View>
+      )}
+      <Image
+        source={{ uri: source }}
+        style={[styles.bookImage, style, (loading || error) && styles.hiddenImage]}
+        resizeMode="cover"
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setLoading(false);
+          setError(true);
+        }}
+      />
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -245,6 +311,40 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginLeft: 12,
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+  },
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffebee',
+  },
+  placeholderContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  placeholderText: {
+    color: '#666',
+    fontSize: 12,
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 12,
+  },
+  pageLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 50,
+  },
+  pageLoadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#000000',
+  },
   categoryContainer: {
     marginTop: 20,
   },
@@ -285,5 +385,4 @@ const styles = StyleSheet.create({
     marginRight: -10,
     borderRadius: 8,
   },
-
 });

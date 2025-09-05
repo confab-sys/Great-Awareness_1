@@ -108,7 +108,7 @@ class SupabaseService {
   }
 
   /**
-   * Upload a book file to storage
+   * Upload a book file to storage with optimization
    * @param {File|Blob} file - The file to upload
    * @param {string} filePath - The path to store the file
    * @returns {Promise<Object>} - Upload result
@@ -119,8 +119,9 @@ class SupabaseService {
         .storage
         .from(this.storageBucket)
         .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
+          cacheControl: '31536000', // 1 year cache for static assets
+          upsert: false,
+          contentType: file.type || 'image/jpeg'
         });
 
       if (error) throw error;
@@ -129,6 +130,86 @@ class SupabaseService {
       console.error('Error uploading book file:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get public URL for a book cover image with fallback to local assets
+   * @param {string} imageName - The name of the image file
+   * @returns {string} - Public URL for the image or local asset path
+   */
+  getBookCoverUrl(imageName) {
+    try {
+      // Check if running in development/local environment
+      if (!this.storageBucket || !SUPABASE_CONFIG.URL) {
+        console.warn('Supabase storage not configured, using local assets');
+        return null; // Will trigger fallback to local assets
+      }
+
+      const { data } = this.supabase
+        .storage
+        .from(this.storageBucket)
+        .getPublicUrl(`covers/${imageName}`);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error getting book cover URL:', error);
+      return null; // Will trigger fallback to local assets
+    }
+  }
+
+  /**
+   * Get all book cover URLs with optimized thumbnails
+   * @returns {Object} - Object mapping book names to their optimized cover URLs
+   */
+  getAllBookCoverUrls() {
+    const bookCovers = {
+      'Unlocking the Primal Brain': 'Unlocking the Primal Brain.png',
+      'No More Confusion': 'No More Confusion.png',
+      'The Power Within': 'The Power Within.png',
+      'The Confidence Map': 'The Confidence Map.png',
+      'The Secret Behind Romantic Love': 'The Secret Behind Romantic Love.png',
+      'Master Your Finances': 'MasterYourFinances.png',
+      'Breaking Free From Mastubation': 'Breaking Free From Mastubation.png',
+      'The Woman': 'The Woman.png',
+      'Resonance': 'Resonance.png'
+    };
+
+    const urls = {};
+    for (const [bookName, fileName] of Object.entries(bookCovers)) {
+      urls[bookName] = this.getBookCoverUrl(fileName, {
+        width: 300,
+        height: 450,
+        format: 'webp',
+        quality: 80
+      });
+    }
+
+    return urls;
+  }
+
+  /**
+   * Get responsive image URLs for different screen densities
+   * @param {string} imageName - The name of the image file
+   * @param {Array} sizes - Array of size objects [{width, height, suffix}]
+   * @returns {Object} - Object with responsive URLs
+   */
+  getResponsiveBookCoverUrls(imageName, sizes = [
+    { width: 150, height: 225, suffix: 'small' },
+    { width: 300, height: 450, suffix: 'medium' },
+    { width: 600, height: 900, suffix: 'large' }
+  ]) {
+    const urls = {};
+    
+    sizes.forEach(size => {
+      urls[size.suffix] = this.getBookCoverUrl(imageName, {
+        width: size.width,
+        height: size.height,
+        format: 'webp',
+        quality: 85
+      });
+    });
+
+    return urls;
   }
 
   /**
