@@ -23,8 +23,8 @@ import supabaseService from './supabaseService';
 
 class WebhookService {
   private DOWNLOAD_LINKS: Record<string, string> = {
-    'The Confidence Map': 'https://drive.usercontent.google.com/download?id=1m8VHhQzvVBhzIKMfFQRFQwvKRoO9Xtr4&export=download&authuser=0',
-    'Unlocking the Primal Brain': 'supabase', // This will use Supabase for secure file delivery
+    'The Confidence Map': 'https://seequpormifvziwxfeqv.supabase.co/storage/v1/object/public/Books/Confidence%20Guide%20Map%20by%20Ashwa%20Aashard.pdf',
+    'Unlocking the Primal Brain': 'https://seequpormifvziwxfeqv.supabase.co/storage/v1/object/public/Books/Unlocking%20the%20primal%20brainThe%20hidden%20force%20shaping%20your%20thoughts%20and%20emotions.pdf', // This will use Supabase for secure file delivery
   };
 
   private PRODUCT_AMOUNTS: Record<string, number> = {
@@ -32,6 +32,7 @@ class WebhookService {
     'Unlocking the Primal Brain': 400,
     'The Power Within': 500,
     'No More Confusion': 400,
+    'Test Product': 1, // 1 KSH for testing
   };
 
   async processPaymentWebhook(webhookData: PaymentWebhook): Promise<WebhookResponse> {
