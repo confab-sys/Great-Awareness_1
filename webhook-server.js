@@ -1,11 +1,11 @@
 // JavaScript Webhook Server - Replaces PHP webhook
 // Run with: node webhook-server.js
 
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const axios = require('axios');
-const supabaseService = require('../services/supabaseService');
+const supabaseService = require('./services/supabaseService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,44 +25,46 @@ app.use((req, res, next) => {
 
 // Product mapping
 const PRODUCT_AMOUNTS = {
-    1: 'The Confidence Map',
+    1: 'Test Product', // 1 KSH for Test Product
     400: 'Unlocking the Primal Brain',
-    500: 'The Power Within'
+    500: 'The Power Within',
+    1000: 'The Confidence Map' // Updated amount for The Confidence Map
 };
 
 const DOWNLOAD_LINKS = {
-    'The Confidence Map': 'https://drive.usercontent.google.com/download?id=1m8VHhQzvVBhzIKMfFQRFQwvKRoO9Xtr4&export=download&authuser=0',
+    'Test Product': 'supabase', // This will use Supabase for secure file delivery
     'Unlocking the Primal Brain': 'supabase' // This will use Supabase for secure file delivery
 };
 
-// Google Sheet logging function
-async function logToGoogleSheet(transactionData) {
+// Book UUID mappings from database
+const BOOK_IDS = {
+  'Test Product': '6c62e16c-dc7f-41e0-9f6d-2738fb15e1fb',
+  'The Confidence Map': '60caab41-0e88-4652-ba8d-a3443a5393f5',
+  'Unlocking the Primal Brain': 'cdcd63b2-5465-4ee3-8a49-9095db44459e',
+  'Unlocking the primal brainThe hidden force shaping your thoughts and emotions': 'cdcd63b2-5465-4ee3-8a49-9095db44459e'
+};
+
+// Supabase logging function
+async function logToSupabase(transactionData) {
     try {
-        const GOOGLE_SHEETS_WEBAPP_URL = process.env.GOOGLE_SHEETS_WEBAPP_URL || 'YOUR_GOOGLE_APPS_SCRIPT_URL';
-        
+        const bookName = transactionData.productName || 'Unknown Product';
         const payload = {
-            transactionId: transactionData.TransactionID,
+            book_id: BOOK_IDS[bookName] || bookName,
+            transaction_id: transactionData.TransactionID,
             amount: transactionData.TransactionAmount,
-            msisdn: transactionData.Msisdn,
-            product: transactionData.productName,
-            status: 'CONFIRMED',
+            phone_number: transactionData.Msisdn,
             receipt: transactionData.TransactionReceipt,
-            timestamp: new Date().toISOString()
+            status: transactionData.status || 'completed',
+            created_at: new Date().toISOString()
         };
 
-        console.log('📊 Logging to Google Sheet:', payload);
+        console.log('📊 Logging to Supabase:', payload);
         
-        const response = await axios.post(GOOGLE_SHEETS_WEBAPP_URL, payload, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            timeout: 10000
-        });
-
-        console.log('✅ Google Sheet response:', response.data);
-        return response.data;
+        const result = await supabaseService.recordPurchase(payload);
+        console.log('✅ Supabase response:', result);
+        return result;
     } catch (error) {
-        console.error('❌ Error logging to Google Sheet:', error.message);
+        console.error('❌ Error logging to Supabase:', error.message);
         throw error;
     }
 }
@@ -98,33 +100,26 @@ app.post('/webhook', async (req, res) => {
             const productName = PRODUCT_AMOUNTS[amount] || 'Unknown Product';
             console.log('📦 Product:', productName);
 
-            // Log to Google Sheet
-            try {
-                await logToGoogleSheet({
-                    ...webhookData,
-                    productName
-                });
-            } catch (error) {
-                console.error('❌ Failed to log to Google Sheet:', error);
-            }
-
-            // Handle automatic downloads
+            // Handle automatic downloads and logging
             const downloadLink = DOWNLOAD_LINKS[productName];
             let downloadTriggered = false;
             let downloadUrl = null;
 
             if (productName === 'Unlocking the Primal Brain') {
-                console.log('🎉 Triggering Supabase download for Unlocking the Primal Brain');
+                console.log('🎉 Triggering Supabase logging and download for Unlocking the Primal Brain');
                 
                 try {
-                    // Record the purchase in Supabase
+                    // Record the purchase in Supabase with correct field mapping
                     await supabaseService.recordPurchase({
-                        bookId: productName,
-                        transactionId: transactionId,
+                        book_id: BOOK_IDS[productName] || productName,
+                        transaction_id: transactionId,
                         amount: amount,
-                        phoneNumber: phone,
-                        receipt: receipt
+                        phone_number: phone,
+                        receipt: receipt,
+                        status: 'completed'
                     });
+                    
+                    console.log('✅ Purchase logged to Supabase successfully');
                     
                     // Generate a temporary download URL that expires
                     downloadUrl = await supabaseService.generateTempDownloadUrl(productName);
@@ -134,7 +129,25 @@ app.post('/webhook', async (req, res) => {
                         console.log('✅ Supabase download URL generated successfully');
                     }
                 } catch (error) {
-                    console.error('❌ Error generating Supabase download:', error);
+                    console.error('❌ Error with Supabase operations:', error);
+                }
+            } else if (productName === 'Test Product') {
+                console.log('🎉 Triggering Supabase logging for Test Product');
+                
+                try {
+                    // Record Test Product purchases in Supabase
+                    await supabaseService.recordPurchase({
+                        book_id: BOOK_IDS[productName] || productName,
+                        transaction_id: transactionId,
+                        amount: amount,
+                        phone_number: phone,
+                        receipt: receipt,
+                        status: 'completed'
+                    });
+                    
+                    console.log('✅ Test Product purchase logged to Supabase successfully');
+                } catch (error) {
+                    console.error('❌ Error logging Test Product to Supabase:', error);
                 }
             } else if (downloadLink && productName === 'The Confidence Map') {
                 console.log('🎉 Triggering automatic download for The Confidence Map');
@@ -158,10 +171,10 @@ app.post('/webhook', async (req, res) => {
             console.log('❌ Payment failed:', webhookData.ResponseDescription);
             
             // Log failed transaction
-            await logToGoogleSheet({
+            await logToSupabase({
                 ...webhookData,
                 productName: 'FAILED_PAYMENT',
-                status: 'FAILED'
+                status: 'failed'
             });
 
             return res.status(200).json({

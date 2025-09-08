@@ -1,15 +1,18 @@
 export const PAYMENT_PROVIDERS = {
-
   pesaflux: {
     name: 'PesaFlux',
-    baseUrl: 'https://api.pesaflux.co.ke', // Updated domain from .co.ke to .com
+    baseUrl: 'https://api.pesaflux.co.ke',
     endpoints: {
       stkPush: '/v1/initiatestk',
       transactionStatus: '/v1/transactionstatus',
     },
     credentials: {
-      apiKey: 'PSFXn2TDSkns', // Verified API key
+      apiKey: process.env.PESAFLEX_API_KEY || 'PSFXn2TDSkns',
       email: 'ashwaashard@gmail.com',
+    },
+    webhook: {
+      url: process.env.WEBHOOK_URL || 'http://localhost:3001/api/webhook',
+      endpoint: '/api/webhook',
     },
   },
 };

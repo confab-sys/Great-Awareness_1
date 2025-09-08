@@ -1,7 +1,7 @@
 // Test script for JavaScript webhook server
 const axios = require('axios');
 
-const WEBHOOK_URL = process.env.WEBHOOK_URL || 'http://localhost:3001/webhook';
+const WEBHOOK_URL = process.env.WEBHOOK_URL || 'http://localhost:8081/webhook';
 
 // Test data for successful payment
 const successfulPaymentData = {

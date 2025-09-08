@@ -1,5 +1,5 @@
 // Supabase Configuration
-export const SUPABASE_CONFIG = {
+const SUPABASE_CONFIG = {
   // Supabase project URL
   URL: process.env.SUPABASE_URL || 'https://seequpormifvziwxfeqv.supabase.co',
   
@@ -18,3 +18,5 @@ export const SUPABASE_CONFIG = {
     'The Confidence Map.pdf': 'the-confidence-map.pdf'
   }
 };
+
+module.exports = { SUPABASE_CONFIG };

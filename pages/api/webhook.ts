@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import googleSheetWriter from '../../services/googleSheetWriter';
 import webhookService from '../../services/webhookService';
 import { storeWebhookPayment } from './check-webhook-payments';
+import supabaseService from '../../services/supabaseService';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -17,9 +17,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (result.success) {
       console.log('✅ Webhook processed successfully:', result);
       
-      // If download was triggered for The Confidence Map
-      if (result.downloadTriggered && result.productName === 'The Confidence Map') {
-        console.log('🎉 Automatic download triggered for The Confidence Map!');
+      // Handle successful payment for any product including Test Product
+      if (result.downloadTriggered) {
+        console.log(`🎉 Automatic download triggered for ${result.productName}!`)
         
         // Store the payment data for client-side access
         storeWebhookPayment({
@@ -31,27 +31,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           downloadTriggered: true
         });
         
-        // You can add additional actions here:
-        // - Send push notification to user
-        // - Send email with download link
-        // - Update database with purchase record
-        // - Send SMS with download link
-      }
-      
-      // Log transaction to Google Sheet
-      try {
-        console.log('📊 Logging transaction to Google Sheet');
-        await googleSheetWriter.logSuccessfulTransaction(
-          req.body.TransactionID,
-          req.body.TransactionAmount,
-          req.body.Msisdn,
-          result.productName || 'Unknown Product',
-          'CONFIRMED',
-          req.body.TransactionReceipt
-        );
-        console.log('✅ Transaction logged to Google Sheet successfully');
-      } catch (error) {
-        console.error('❌ Error logging to Google Sheet:', error);
+        // Log transaction to Supabase instead of Google Sheets
+        try {
+          console.log('📊 Logging transaction to Supabase');
+          await supabaseService.recordPurchase({
+            bookId: result.productName === 'Test Product' ? 'test-product' : 
+                   result.productName === 'The Confidence Map' ? 'confidence-map' : 'unknown',
+            transactionId: req.body.TransactionID,
+            amount: parseFloat(req.body.TransactionAmount),
+            phoneNumber: req.body.Msisdn,
+            receipt: req.body.TransactionReceipt
+          });
+          console.log('✅ Transaction logged to Supabase successfully');
+        } catch (error) {
+          console.error('❌ Error logging to Supabase:', error);
+        }
       }
 
       return res.status(200).json({

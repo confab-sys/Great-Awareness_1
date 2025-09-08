@@ -7,14 +7,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Simulate a successful payment for "The Confidence Map" (1 KSH)
+    // Simulate a successful payment for "Test Product" (1 KSH)
     const testWebhookData = {
       ResponseCode: 0,
       ResponseDescription: "Success. Request accepted for processing",
       MerchantRequestID: "test-12345",
       CheckoutRequestID: "test-checkout-12345",
       TransactionID: "TEST123456789",
-      TransactionAmount: 1, // 1 KSH for The Confidence Map
+      TransactionAmount: 1, // 1 KSH for Test Product
       TransactionReceipt: "TEST123456",
       TransactionDate: "20240928222012",
       TransactionReference: "TEST_ORDER_12345",

@@ -4,6 +4,9 @@ import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput
 import ArrowBackLeftIcon from '../assets/icons/arrow back left.svg';
 import paymentService from '../services/paymentService';
 import supabaseService from '../services/supabaseService';
+import sheetStatusService from '../services/sheetStatusService';
+import * as Linking from 'expo-linking';
+import { ActivityIndicator } from 'react-native';
 
 import BlankStarIcon from '../assets/icons/blank star.svg';
 import FullStarIcon from '../assets/icons/full star.svg';
@@ -17,29 +20,42 @@ export default function TestProductPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingTransactionId, setPendingTransactionId] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [purchaseDetails, setPurchaseDetails] = useState<any>(null);
 
   const handlePurchase = () => {
     setPaymentModalVisible(true);
   };
   
+  // Define the type for payment result
+  // Expanded PaymentResult type to match all possible return shapes
+  interface PaymentResult {
+    success: boolean;
+    message: any;
+    transactionId?: any;
+    provider?: string;
+    response?: any;
+    error?: any;
+    responseCode?: any;
+  }
   const handlePayment = async () => {
     if (!phoneNumber) {
       Alert.alert('Empty Phone Number', 'Please enter your phone number');
       return;
     }
-
+  
     setIsProcessing(true);
     try {
       // Use paymentService with PesaFlux provider
       const amount = 1; // Price for the test product (1 KSH)
       const productTitle = 'Test Product';
-      const result = await paymentService.sendSTKPush(phoneNumber, amount, 'pesaflux', productTitle);
-      
+      const result = await paymentService.sendSTKPush(phoneNumber, amount, 'pesaflux', productTitle) as PaymentResult;
       if (result && result.success) {
-        if (result.transactionId) {
-          setPendingTransactionId(result.transactionId);
+        const transactionId = result.transactionId || (result.response && result.response.transactionId);
+        if (transactionId) {
+          setPendingTransactionId(transactionId);
         }
-        
         Alert.alert(
           'Payment Request Sent!', 
           'Approve the M-Pesa prompt on your phone.',
@@ -61,21 +77,110 @@ export default function TestProductPage() {
       Alert.alert('No Transaction', 'There is no pending transaction to check.');
       return;
     }
-    
     setIsChecking(true);
     try {
-      const statusResult = await paymentService.checkTransactionStatus(pendingTransactionId);
-      
-      if (statusResult.success) {
-        Alert.alert('Payment Successful', 'Thank you for your purchase!');
-        setPaymentModalVisible(false);
+      // Poll backend for payment status
+      const statusResult: { success: boolean; status?: string } = await paymentService.checkTransactionStatus(pendingTransactionId);
+      if (statusResult && statusResult.success && statusResult.status === 'SUCCESS') {
+        // Start automatic delivery monitoring
+        await startAutomaticDelivery();
       } else {
-        Alert.alert('Payment Pending', 'Your payment is still being processed. Please try checking again.');
+        Alert.alert('Payment Pending', 'Payment not yet confirmed. Please try again in a moment.');
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to check payment status. Please try again.');
     } finally {
       setIsChecking(false);
+    }
+  };
+
+  const startAutomaticDelivery = async () => {
+    try {
+      // Check for recent purchases and deliver automatically
+      const recentPurchases = await supabaseService.checkAndDeliverRecentPurchases(phoneNumber);
+      
+      if (recentPurchases && recentPurchases.length > 0) {
+        const latestPurchase = recentPurchases[0];
+        setDownloadUrl(latestPurchase.downloadUrl);
+        setPurchaseDetails({
+          productName: 'Test Product',
+          downloadUrl: latestPurchase.downloadUrl,
+          amount: 1,
+          transactionId: latestPurchase.transaction_id,
+          phoneNumber: phoneNumber
+        });
+        setSuccessModalVisible(true);
+        setPaymentModalVisible(false);
+      } else {
+        // Set up real-time subscription for future purchases
+        setupPurchaseSubscription();
+        Alert.alert('Monitoring', 'Setting up automatic delivery...');
+      }
+    } catch (error) {
+      console.error('Error in automatic delivery:', error);
+      Alert.alert('Error', 'Failed to set up automatic delivery. Please check again.');
+    }
+  };
+
+  const setupPurchaseSubscription = () => {
+    try {
+      const subscription = supabaseService.subscribeToPurchases(phoneNumber, async (purchaseData) => {
+        console.log('🎉 Automatic delivery triggered:', purchaseData);
+        setDownloadUrl(purchaseData.downloadUrl);
+        setPurchaseDetails({
+          productName: purchaseData.purchase.book_id,
+          downloadUrl: purchaseData.downloadUrl,
+          amount: purchaseData.purchase.amount,
+          transactionId: purchaseData.purchase.transaction_id,
+          phoneNumber: phoneNumber
+        });
+        setSuccessModalVisible(true);
+        setPaymentModalVisible(false);
+      });
+
+      // Store subscription for cleanup
+      return subscription;
+    } catch (error) {
+      console.error('Error setting up subscription:', error);
+    }
+  };
+
+  // Enhanced payment flow with automatic delivery
+  const handlePaymentWithAutoDelivery = async () => {
+    if (!phoneNumber) {
+      Alert.alert('Empty Phone Number', 'Please enter your phone number');
+      return;
+    }
+  
+    setIsProcessing(true);
+    try {
+      // Use paymentService with PesaFlux provider
+      const amount = 1; // Price for the test product (1 KSH)
+      const productTitle = 'Test Product';
+      const result = await paymentService.sendSTKPush(phoneNumber, amount, 'pesaflux', productTitle) as PaymentResult;
+      
+      if (result && result.success) {
+        const transactionId = result.transactionId || (result.response && result.response.transactionId);
+        if (transactionId) {
+          setPendingTransactionId(transactionId);
+          
+          // Set up automatic delivery monitoring
+          setupPurchaseSubscription();
+          
+          Alert.alert(
+            'Payment Request Sent!', 
+            'Approve the M-Pesa prompt on your phone. Your product will be delivered automatically.',
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        Alert.alert('Payment Failed', (result && result.message) || 'Unknown error occurred');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      Alert.alert('Error', 'Failed to process payment. Please try again.');
+    } finally {
+      setIsProcessing(false);
     }
   };
   
@@ -154,24 +259,95 @@ export default function TestProductPage() {
               
               <TouchableOpacity 
                 style={styles.paymentOption}
-                onPress={handlePayment}
+                onPress={handlePaymentWithAutoDelivery}
                 disabled={isProcessing}
               >
-                <Text style={styles.paymentOptionText}>
-                  {isProcessing ? 'Processing...' : 'Pay with M-Pesa'}
-                </Text>
+                {isProcessing ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                    <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.paymentOptionText}>Processing...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.paymentOptionText}>Pay with M-Pesa</Text>
+                )}
               </TouchableOpacity>
               
               {pendingTransactionId && (
                 <TouchableOpacity 
-                  style={styles.checkStatusButton}
-                  onPress={handleCheckPaymentStatus}
-                  disabled={isChecking}
-                >
-                  <Text style={styles.paymentOptionText}>
-                    {isChecking ? 'Checking...' : 'Check Payment Status'}
-                  </Text>
-                </TouchableOpacity>
+                style={styles.checkStatusButton}
+                onPress={async () => {
+                  if (!pendingTransactionId) {
+                    Alert.alert('No Transaction', 'Please complete payment first.');
+                    return;
+                  }
+                  
+                  setIsChecking(true);
+                  try {
+                    // Check payment status
+                    const statusResult = await paymentService.checkTransactionStatus(pendingTransactionId);
+                    
+                    if (statusResult && statusResult.success && statusResult.status === 'SUCCESS') {
+                      // Payment successful - deliver product
+                      const recentPurchases = await supabaseService.checkAndDeliverRecentPurchases(phoneNumber);
+                      
+                      if (recentPurchases && recentPurchases.length > 0) {
+                        const latestPurchase = recentPurchases[0];
+                        setDownloadUrl(latestPurchase.downloadUrl);
+                        setPaymentModalVisible(false);
+                        
+                        Alert.alert(
+                          'Payment Successful!',
+                          'Your product is ready for download.',
+                          [
+                            {
+                              text: 'Download Now',
+                              onPress: () => Linking.openURL(latestPurchase.downloadUrl),
+                            },
+                            { text: 'Later', style: 'cancel' },
+                          ]
+                        );
+                      } else {
+                        // Fallback: check existing purchases
+                        const allPurchases = await supabaseService.getAllPurchasesWithDownloadUrls(phoneNumber);
+                        const testProductPurchase = allPurchases.find(p => p.purchase.book_id === 'test-product');
+                        
+                        if (testProductPurchase) {
+                          setDownloadUrl(testProductPurchase.downloadUrl);
+                          setPaymentModalVisible(false);
+                          
+                          Alert.alert(
+                            'Product Found!',
+                            'Your test product is ready for download.',
+                            [
+                              {
+                                text: 'Download Now',
+                                onPress: () => Linking.openURL(testProductPurchase.downloadUrl),
+                              },
+                              { text: 'Later', style: 'cancel' },
+                            ]
+                          );
+                        } else {
+                          Alert.alert('No Product Found', 'No purchased product found for this phone number.');
+                        }
+                      }
+                    } else {
+                      Alert.alert('Payment Pending', 'Payment not yet confirmed. Please check your M-Pesa and try again.');
+                    }
+                  } catch (error) {
+                    console.error('Error checking payment:', error);
+                    Alert.alert('Error', 'Failed to check payment status. Please try again.');
+                  } finally {
+                    setIsChecking(false);
+                  }
+                }}
+                disabled={isChecking}
+              >
+                {isChecking ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.paymentOptionText}>Get My Product</Text>
+                )}
+              </TouchableOpacity>
               )}
               
               <Pressable
@@ -180,6 +356,62 @@ export default function TestProductPage() {
               >
                 <Text style={styles.closeButtonText}>Cancel</Text>
               </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Success Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={successModalVisible}
+          onRequestClose={() => setSuccessModalVisible(false)}
+        >
+          <View style={styles.centeredView}>
+            <View style={[styles.modalView, styles.successModal]}>
+              <Text style={styles.successTitle}>🎉 Purchase Successful!</Text>
+              <Text style={styles.successSubtitle}>Your digital product is ready</Text>
+              
+              <View style={styles.successDetails}>
+                <Text style={styles.successText}>✅ Test Product - KES 1.00</Text>
+                <Text style={styles.successText}>📱 Phone: {phoneNumber}</Text>
+                {purchaseDetails?.transactionId && (
+                  <Text style={styles.successText}>🆔 Transaction: {purchaseDetails.transactionId}</Text>
+                )}
+              </View>
+
+              <Text style={styles.instructionsTitle}>How to access your product:</Text>
+              <Text style={styles.instructionsText}>1. Tap "Download Now" below to get your file</Text>
+              <Text style={styles.instructionsText}>2. The file will open in your browser or PDF reader</Text>
+              <Text style={styles.instructionsText}>3. You can also find it anytime in "My Purchases"</Text>
+
+              <TouchableOpacity 
+                style={[styles.downloadButton, styles.successDownloadButton]}
+                onPress={() => {
+                  if (downloadUrl) {
+                    Linking.openURL(downloadUrl);
+                  }
+                }}
+              >
+                <Text style={styles.downloadButtonText}>📥 Download Now</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.myPurchasesButton}
+                onPress={() => {
+                  setSuccessModalVisible(false);
+                  router.push('/mypurchases');
+                }}
+              >
+                <Text style={styles.myPurchasesButtonText}>📚 Go to My Purchases</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.closeSuccessButton}
+                onPress={() => setSuccessModalVisible(false)}
+              >
+                <Text style={styles.closeSuccessButtonText}>Close</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -376,5 +608,69 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#666',
     fontSize: 16,
+  },
+  successModal: {
+    padding: 30,
+    maxWidth: 350,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  successSubtitle: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  successDetails: {
+    backgroundColor: '#F5F5F5',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  successText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 5,
+  },
+  instructionsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  instructionsText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  successDownloadButton: {
+    backgroundColor: '#4CAF50',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  myPurchasesButton: {
+    backgroundColor: '#2196F3',
+    marginBottom: 10,
+  },
+  myPurchasesButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  closeSuccessButton: {
+    marginTop: 10,
+  },
+  closeSuccessButtonText: {
+    color: '#666',
+    fontSize: 16,
+    textDecorationLine: 'underline',
   },
 });
