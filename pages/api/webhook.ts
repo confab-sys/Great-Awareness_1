@@ -1,7 +1,27 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import webhookService from '../../services/webhookService';
-import { storeWebhookPayment } from './check-webhook-payments';
 import supabaseService from '../../services/supabaseService';
+
+// Product mappings
+const PRODUCT_AMOUNTS = {
+  'Test Product': 1,
+  'The Confidence Map': 100,
+  'Great Awareness Book': 200,
+  'Digital Marketing Guide': 50
+};
+
+const DOWNLOAD_LINKS = {
+  'Test Product': 'https://great-awareness-1.vercel.app/api/download/test-product',
+  'The Confidence Map': 'https://great-awareness-1.vercel.app/api/download/confidence-map',
+  'Great Awareness Book': 'https://great-awareness-1.vercel.app/api/download/great-awareness',
+  'Digital Marketing Guide': 'https://great-awareness-1.vercel.app/api/download/digital-marketing'
+};
+
+const BOOK_IDS = {
+  'Test Product': 'test-product',
+  'The Confidence Map': 'confidence-map',
+  'Great Awareness Book': 'great-awareness',
+  'Digital Marketing Guide': 'digital-marketing'
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -9,58 +29,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log('🔔 Webhook received:', req.body);
+    const webhookData = req.body;
+    console.log('🔔 Webhook received:', webhookData);
 
-    // Process the webhook data
-    const result = await webhookService.processPaymentWebhook(req.body);
-
-    if (result.success) {
-      console.log('✅ Webhook processed successfully:', result);
-      
-      // Handle successful payment for any product including Test Product
-      if (result.downloadTriggered) {
-        console.log(`🎉 Automatic download triggered for ${result.productName}!`)
-        
-        // Store the payment data for client-side access
-        storeWebhookPayment({
-          productName: result.productName,
-          amount: req.body.TransactionAmount,
-          receipt: req.body.TransactionReceipt,
-          transactionId: req.body.TransactionID,
-          phoneNumber: req.body.Msisdn,
-          downloadTriggered: true
-        });
-        
-        // Log transaction to Supabase instead of Google Sheets
-        try {
-          console.log('📊 Logging transaction to Supabase');
-          await supabaseService.recordPurchase({
-            bookId: result.productName === 'Test Product' ? 'test-product' : 
-                   result.productName === 'The Confidence Map' ? 'confidence-map' : 'unknown',
-            transactionId: req.body.TransactionID,
-            amount: parseFloat(req.body.TransactionAmount),
-            phoneNumber: req.body.Msisdn,
-            receipt: req.body.TransactionReceipt
-          });
-          console.log('✅ Transaction logged to Supabase successfully');
-        } catch (error) {
-          console.error('❌ Error logging to Supabase:', error);
-        }
-      }
-
-      return res.status(200).json({
-        success: true,
-        message: result.message,
-        productName: result.productName,
-        downloadTriggered: result.downloadTriggered
-      });
-    } else {
-      console.log('❌ Webhook processing failed:', result.message);
+    // Validate webhook data
+    if (!webhookData || !webhookData.ResponseCode) {
+      console.error('❌ Invalid webhook data:', webhookData);
       return res.status(400).json({
         success: false,
-        message: result.message
+        message: 'Invalid webhook data'
       });
     }
+
+    // Check if payment was successful
+    if (webhookData.ResponseCode !== '00000000') {
+      console.log('❌ Payment failed:', webhookData.ResponseDescription);
+      return res.status(400).json({
+        success: false,
+        message: `Payment failed: ${webhookData.ResponseDescription}`
+      });
+    }
+
+    // Determine product by amount
+    const amount = parseFloat(webhookData.TransactionAmount);
+    let productName = 'Unknown Product';
+    
+    for (const [name, productAmount] of Object.entries(PRODUCT_AMOUNTS)) {
+      if (amount === productAmount) {
+        productName = name;
+        break;
+      }
+    }
+
+    console.log(`💰 Payment received: ${amount} for ${productName}`);
+
+    // Log purchase to Supabase
+    try {
+      console.log('📊 Logging purchase to Supabase...');
+      await supabaseService.recordPurchase({
+        bookId: BOOK_IDS[productName] || 'unknown',
+        transactionId: webhookData.TransactionID,
+        amount: amount,
+        phoneNumber: webhookData.Msisdn,
+        receipt: webhookData.TransactionReceipt
+      });
+      console.log('✅ Purchase logged to Supabase successfully');
+    } catch (error) {
+      console.error('❌ Error logging to Supabase:', error);
+    }
+
+    // Return success response
+    return res.status(200).json({
+      success: true,
+      message: `Payment processed successfully for ${productName}`,
+      productName: productName,
+      downloadUrl: DOWNLOAD_LINKS[productName] || null,
+      transactionId: webhookData.TransactionID
+    });
 
   } catch (error) {
     console.error('❌ Webhook error:', error);

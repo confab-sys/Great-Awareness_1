@@ -1,20 +1,32 @@
 {
-  "buildCommand": "npm run build:web",
-  "outputDirectory": "dist",
-  "devCommand": "npm run web",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "vite",
-  "rewrites": [
+  "framework": "nextjs",
+  "functions": {
+    "pages/api/webhook.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
     },
-    {
-      "source": "/(.*)",
-      "destination": "/"
-    }
-  ],
-  "headers": [
     {
       "source": "/service-worker.js",
       "headers": [
