@@ -8,7 +8,7 @@ import supabaseService from '../services/supabaseService';
 
 export default function BooksPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [bookCovers, setBookCovers] = useState({});
+  const [bookCovers, setBookCovers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -199,7 +199,7 @@ export default function BooksPage() {
   );
 }
 
-const BookCoverImage = ({ source, style }) => {
+const BookCoverImage = ({ source, style }: { source: string | undefined, style: any }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
